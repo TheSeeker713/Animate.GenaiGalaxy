@@ -23,8 +23,7 @@ export default function Dashboard() {
         navigate(`/raster/${project.id}`)
         break
       case 'vector':
-        // TODO: navigate(`/vector/${project.id}`)
-        alert('Vector Studio coming soon!')
+        navigate(`/vector/${project.id}`)
         break
       case 'character':
         // TODO: navigate(`/character/${project.id}`)
@@ -41,6 +40,9 @@ export default function Dashboard() {
     switch (type) {
       case 'raster':
         navigate(`/raster/${projectId}`)
+        break
+      case 'vector':
+        navigate(`/vector/${projectId}`)
         break
       default:
         alert(`${type} Studio coming soon!`)
@@ -106,8 +108,8 @@ export default function Dashboard() {
               <p className="text-gray-400 text-sm">
                 Scalable graphics with motion tweening and smooth transitions
               </p>
-              <div className="mt-4 text-xs text-yellow-400">
-                🚧 Coming soon
+              <div className="mt-4 text-xs text-green-400">
+                ✓ Available now
               </div>
             </button>
 
