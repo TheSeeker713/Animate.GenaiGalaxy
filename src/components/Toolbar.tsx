@@ -12,6 +12,7 @@ export default function Toolbar() {
     setBrushColor,
     togglePuppetMode,
     toggleOnionSkin,
+    clearCurrentFrame,
   } = useAnimationStore()
 
   return (
@@ -88,6 +89,15 @@ export default function Toolbar() {
         title="Toggle Onion Skin"
       >
         👻
+      </button>
+
+      {/* Clear Frame */}
+      <button
+        onClick={clearCurrentFrame}
+        className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-red-500 hover:text-white rounded transition"
+        title="Clear Current Frame"
+      >
+        🗑️ Clear
       </button>
     </div>
   )

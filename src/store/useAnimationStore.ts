@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { DrawingState, Frame, Layer } from '../types'
+import type { DrawingState, Frame, Layer, LineData } from '../types'
 
 interface AnimationStore extends DrawingState {
   // Drawing actions
@@ -13,6 +13,8 @@ interface AnimationStore extends DrawingState {
   deleteFrame: (index: number) => void
   duplicateFrame: (index: number) => void
   updateFrame: (index: number, frame: Frame) => void
+  saveFrameDrawing: (frameIndex: number, layerIndex: number, lines: LineData[], dataUrl: string) => void
+  clearCurrentFrame: () => void
   
   // Playback actions
   setFps: (fps: number) => void
@@ -44,6 +46,7 @@ const createDefaultLayer = (): Layer => ({
   visible: true,
   opacity: 1,
   imageData: '',
+  lines: [],
 })
 
 const createDefaultFrame = (): Frame => ({
@@ -118,6 +121,45 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
     return { frames: newFrames }
   }),
   
+  saveFrameDrawing: (frameIndex, layerIndex, lines, dataUrl) => set((state) => {
+    const newFrames = [...state.frames]
+    const frame = newFrames[frameIndex]
+    if (!frame) return state
+    
+    const newLayers = [...frame.layers]
+    if (newLayers[layerIndex]) {
+      newLayers[layerIndex] = {
+        ...newLayers[layerIndex],
+        lines: lines,
+        imageData: dataUrl,
+      }
+    }
+    
+    newFrames[frameIndex] = {
+      ...frame,
+      layers: newLayers,
+    }
+    
+    return { frames: newFrames }
+  }),
+  
+  clearCurrentFrame: () => set((state) => {
+    const newFrames = [...state.frames]
+    const frame = newFrames[state.currentFrameIndex]
+    if (!frame) return state
+    
+    newFrames[state.currentFrameIndex] = {
+      ...frame,
+      layers: frame.layers.map(layer => ({
+        ...layer,
+        lines: [],
+        imageData: '',
+      })),
+    }
+    
+    return { frames: newFrames }
+  }),
+  
   // Playback actions
   setFps: (fps) => set({ fps }),
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
@@ -167,6 +209,7 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
       visible: true,
       opacity: 1,
       imageData: '',
+      lines: [],
     }
     
     const newFrames = [...state.frames]

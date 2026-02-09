@@ -1,14 +1,8 @@
 import { useRef, useEffect, useState } from 'react'
-import { Stage, Layer, Line } from 'react-konva'
+import { Stage, Layer, Line, Image } from 'react-konva'
 import { useAnimationStore } from '../store/useAnimationStore'
+import type { LineData } from '../types'
 import Konva from 'konva'
-
-interface LineData {
-  tool: 'brush' | 'eraser'
-  points: number[]
-  color: string
-  size: number
-}
 
 export default function Canvas() {
   const stageRef = useRef<Konva.Stage>(null)
@@ -16,6 +10,7 @@ export default function Canvas() {
   const [lines, setLines] = useState<LineData[]>([])
   const [isDrawing, setIsDrawing] = useState(false)
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 })
+  const [onionSkinImage, setOnionSkinImage] = useState<HTMLImageElement | null>(null)
 
   const {
     currentTool,
@@ -24,9 +19,52 @@ export default function Canvas() {
     puppetMode,
     onionSkinEnabled,
     currentFrameIndex,
+    frames,
     faceLandmarks,
     pushHistory,
+    saveFrameDrawing,
   } = useAnimationStore()
+
+  const currentFrame = frames[currentFrameIndex]
+  const previousFrame = currentFrameIndex > 0 ? frames[currentFrameIndex - 1] : null
+
+  // Load frame drawing when frame changes
+  useEffect(() => {
+    if (currentFrame && currentFrame.layers[0]) {
+      const frameLines = currentFrame.layers[0].lines || []
+      setLines(frameLines)
+    }
+  }, [currentFrameIndex, currentFrame])
+
+  // Save frame drawing before switching frames or when lines change
+  useEffect(() => {
+    if (!isDrawing && lines.length > 0) {
+      const timer = setTimeout(() => {
+        const stage = stageRef.current
+        if (stage) {
+          const dataUrl = stage.toDataURL()
+          saveFrameDrawing(currentFrameIndex, 0, lines, dataUrl)
+        }
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [lines, currentFrameIndex, saveFrameDrawing, isDrawing])
+
+  // Load onion skin image from previous frame
+  useEffect(() => {
+    if (onionSkinEnabled && previousFrame && previousFrame.layers[0]) {
+      const prevImageData = previousFrame.layers[0].imageData
+      if (prevImageData) {
+        const img = new window.Image()
+        img.onload = () => setOnionSkinImage(img)
+        img.src = prevImageData
+      } else {
+        setOnionSkinImage(null)
+      }
+    } else {
+      setOnionSkinImage(null)
+    }
+  }, [onionSkinEnabled, previousFrame])
 
   // Resize canvas to fit container
   useEffect(() => {
@@ -152,11 +190,12 @@ export default function Canvas() {
         >
           <Layer ref={layerRef}>
             {/* Onion skin - previous frame */}
-            {onionSkinEnabled && currentFrameIndex > 0 && (
-              <Line
-                points={[]} // TODO: Load previous frame data
-                stroke="rgba(255, 100, 100, 0.3)"
-                strokeWidth={2}
+            {onionSkinEnabled && onionSkinImage && (
+              <Image
+                image={onionSkinImage}
+                width={stageSize.width}
+                height={stageSize.height}
+                opacity={0.3}
               />
             )}
 

@@ -2,12 +2,20 @@ import type { NormalizedLandmark } from '@mediapipe/tasks-vision'
 
 export type Tool = 'brush' | 'eraser' | 'puppet'
 
+export interface LineData {
+  tool: 'brush' | 'eraser'
+  points: number[]
+  color: string
+  size: number
+}
+
 export interface Layer {
   id: string
   name: string
   visible: boolean
   opacity: number
   imageData: string // dataURL
+  lines: LineData[] // Vector drawing data
 }
 
 export interface Frame {

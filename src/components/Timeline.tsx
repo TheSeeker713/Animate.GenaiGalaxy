@@ -130,21 +130,33 @@ export default function Timeline() {
 
       {/* Frame Thumbnails */}
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {frames.map((frame, index) => (
-          <button
-            key={frame.id}
-            onClick={() => setCurrentFrame(index)}
-            className={`flex-shrink-0 w-24 h-20 rounded border-2 transition ${
-              index === currentFrameIndex
-                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900'
-                : 'border-gray-300 dark:border-gray-600 bg-gray-200 dark:bg-gray-700 hover:border-gray-400'
-            }`}
-          >
-            <div className="w-full h-full flex items-center justify-center text-xs text-gray-600 dark:text-gray-400">
-              Frame {index + 1}
-            </div>
-          </button>
-        ))}
+        {frames.map((frame, index) => {
+          const thumbnail = frame.layers[0]?.imageData
+          
+          return (
+            <button
+              key={frame.id}
+              onClick={() => setCurrentFrame(index)}
+              className={`flex-shrink-0 w-24 h-20 rounded border-2 transition overflow-hidden ${
+                index === currentFrameIndex
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900'
+                  : 'border-gray-300 dark:border-gray-600 bg-gray-200 dark:bg-gray-700 hover:border-gray-400'
+              }`}
+            >
+              {thumbnail ? (
+                <img 
+                  src={thumbnail} 
+                  alt={`Frame ${index + 1}`}
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-gray-600 dark:text-gray-400">
+                  Frame {index + 1}
+                </div>
+              )}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
