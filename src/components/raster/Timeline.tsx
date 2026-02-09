@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useAnimationStore } from '../store/useAnimationStore'
+import { useAnimationStore } from '../../store/useAnimationStore'
 
 export default function Timeline() {
   const {

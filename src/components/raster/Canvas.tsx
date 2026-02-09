@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import { Stage, Layer, Line, Image } from 'react-konva'
-import { useAnimationStore } from '../store/useAnimationStore'
-import type { LineData } from '../types'
+import { useAnimationStore } from '../../store/useAnimationStore'
+import type { LineData } from '../../types'
 import Konva from 'konva'
 
 export default function Canvas() {
