@@ -1,11 +1,12 @@
 import { create } from 'zustand'
-import type { DrawingState, Frame, Layer, LineData } from '../types'
+import type { DrawingState, Frame, Layer, LineData, ShapeData, Selection } from '../types'
 
 interface AnimationStore extends DrawingState {
   // Drawing actions
   setTool: (tool: DrawingState['currentTool']) => void
   setBrushSize: (size: number) => void
   setBrushColor: (color: string) => void
+  setFillColor: (color: string) => void
   
   // Frame actions
   setCurrentFrame: (index: number) => void
@@ -13,7 +14,7 @@ interface AnimationStore extends DrawingState {
   deleteFrame: (index: number) => void
   duplicateFrame: (index: number) => void
   updateFrame: (index: number, frame: Frame) => void
-  saveFrameDrawing: (frameIndex: number, layerIndex: number, lines: LineData[], dataUrl: string) => void
+  saveFrameDrawing: (frameIndex: number, layerIndex: number, lines: LineData[], shapes: ShapeData[], dataUrl: string) => void
   clearCurrentFrame: () => void
   
   // Playback actions
@@ -32,9 +33,22 @@ interface AnimationStore extends DrawingState {
   pushHistory: (dataUrl: string) => void
   
   // Layer actions
+  setCurrentLayer: (index: number) => void
   addLayer: (frameIndex: number) => void
   deleteLayer: (frameIndex: number, layerId: string) => void
   updateLayer: (frameIndex: number, layerId: string, updates: Partial<Layer>) => void
+  
+  // Selection actions
+  setSelection: (selection: Selection | null) => void
+  clearSelection: () => void
+  
+  // Zoom/Pan actions
+  setZoom: (zoom: number) => void
+  setPan: (x: number, y: number) => void
+  resetView: () => void
+  
+  // Color palette
+  addColorToPalette: (color: string) => void
   
   // Face landmarks
   setFaceLandmarks: (landmarks: DrawingState['faceLandmarks']) => void
@@ -47,6 +61,7 @@ const createDefaultLayer = (): Layer => ({
   opacity: 1,
   imageData: '',
   lines: [],
+  shapes: [],
 })
 
 const createDefaultFrame = (): Frame => ({
@@ -60,7 +75,9 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   currentTool: 'brush',
   brushSize: 5,
   brushColor: '#000000',
+  fillColor: 'transparent',
   currentFrameIndex: 0,
+  currentLayerIndex: 0,
   fps: 24,
   isPlaying: false,
   puppetMode: false,
@@ -71,11 +88,20 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   faceLandmarks: null,
   history: [],
   historyIndex: -1,
+  selection: null,
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+  colorPalette: [
+    '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF',
+    '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080',
+  ],
   
   // Drawing actions
   setTool: (tool) => set({ currentTool: tool }),
   setBrushSize: (size) => set({ brushSize: size }),
   setBrushColor: (color) => set({ brushColor: color }),
+  setFillColor: (color) => set({ fillColor: color }),
   
   // Frame actions
   setCurrentFrame: (index) => set({ currentFrameIndex: index }),
@@ -121,7 +147,7 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
     return { frames: newFrames }
   }),
   
-  saveFrameDrawing: (frameIndex, layerIndex, lines, dataUrl) => set((state) => {
+  saveFrameDrawing: (frameIndex, layerIndex, lines, shapes, dataUrl) => set((state) => {
     const newFrames = [...state.frames]
     const frame = newFrames[frameIndex]
     if (!frame) return state
@@ -131,6 +157,7 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
       newLayers[layerIndex] = {
         ...newLayers[layerIndex],
         lines: lines,
+        shapes: shapes,
         imageData: dataUrl,
       }
     }
@@ -153,6 +180,7 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
       layers: frame.layers.map(layer => ({
         ...layer,
         lines: [],
+        shapes: [],
         imageData: '',
       })),
     }
@@ -199,9 +227,11 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   }),
   
   // Layer actions
+  setCurrentLayer: (index) => set({ currentLayerIndex: index }),
+  
   addLayer: (frameIndex) => set((state) => {
     const frame = state.frames[frameIndex]
-    if (frame.layers.length >= 5) return state
+    if (frame.layers.length >= 10) return state // Increased to 10 layers
     
     const newLayer: Layer = {
       id: crypto.randomUUID(),
@@ -210,6 +240,7 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
       opacity: 1,
       imageData: '',
       lines: [],
+      shapes: [],
     }
     
     const newFrames = [...state.frames]
@@ -246,6 +277,23 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
     }
     
     return { frames: newFrames }
+  }),
+  
+  // Selection actions
+  setSelection: (selection) => set({ selection }),
+  clearSelection: () => set({ selection: null }),
+  
+  // Zoom/Pan actions
+  setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(10, zoom)) }),
+  setPan: (x, y) => set({ panX: x, panY: y }),
+  resetView: () => set({ zoom: 1, panX: 0, panY: 0 }),
+  
+  // Color palette
+  addColorToPalette: (color) => set((state) => {
+    if (state.colorPalette.includes(color)) return state
+    return {
+      colorPalette: [...state.colorPalette, color].slice(0, 20), // Max 20 colors
+    }
   }),
   
   // Face landmarks

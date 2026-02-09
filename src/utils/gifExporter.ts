@@ -85,36 +85,40 @@ export function downloadBlob(blob: Blob, filename: string): void {
 /**
  * Convert frames from Zustand store to canvases for export
  */
-export function prepareFramesForExport(
+export async function prepareFramesForExport(
   frames: Array<{ layers: Array<{ imageData: string; visible: boolean; opacity: number }> }>,
   width: number,
   height: number
-): HTMLCanvasElement[] {
+): Promise<HTMLCanvasElement[]> {
   const canvases: HTMLCanvasElement[] = []
 
-  frames.forEach((frame) => {
+  for (const frame of frames) {
     const canvas = document.createElement('canvas')
     canvas.width = width
     canvas.height = height
     const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    if (!ctx) continue
 
     // Composite all visible layers
-    frame.layers.forEach((layer) => {
-      if (!layer.visible || !layer.imageData) return
+    for (const layer of frame.layers) {
+      if (!layer.visible || !layer.imageData) continue
 
-      const img = new Image()
-      img.src = layer.imageData
-      
-      // Note: This is synchronous loading which may not work for all cases
-      // In production, you'd want to use async loading with Promise.all
-      ctx.globalAlpha = layer.opacity
-      ctx.drawImage(img, 0, 0, width, height)
-    })
+      // Load image asynchronously
+      await new Promise<void>((resolve) => {
+        const img = new Image()
+        img.onload = () => {
+          ctx.globalAlpha = layer.opacity
+          ctx.drawImage(img, 0, 0, width, height)
+          resolve()
+        }
+        img.onerror = () => resolve() // Skip on error
+        img.src = layer.imageData
+      })
+    }
 
     ctx.globalAlpha = 1
     canvases.push(canvas)
-  })
+  }
 
   return canvases
 }
