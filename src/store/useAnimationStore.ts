@@ -1,0 +1,210 @@
+import { create } from 'zustand'
+import type { DrawingState, Frame, Layer } from '../types'
+
+interface AnimationStore extends DrawingState {
+  // Drawing actions
+  setTool: (tool: DrawingState['currentTool']) => void
+  setBrushSize: (size: number) => void
+  setBrushColor: (color: string) => void
+  
+  // Frame actions
+  setCurrentFrame: (index: number) => void
+  addFrame: () => void
+  deleteFrame: (index: number) => void
+  duplicateFrame: (index: number) => void
+  updateFrame: (index: number, frame: Frame) => void
+  
+  // Playback actions
+  setFps: (fps: number) => void
+  togglePlay: () => void
+  setPlaying: (playing: boolean) => void
+  
+  // Mode toggles
+  togglePuppetMode: () => void
+  toggleDarkMode: () => void
+  toggleOnionSkin: () => void
+  
+  // History actions
+  undo: () => void
+  redo: () => void
+  pushHistory: (dataUrl: string) => void
+  
+  // Layer actions
+  addLayer: (frameIndex: number) => void
+  deleteLayer: (frameIndex: number, layerId: string) => void
+  updateLayer: (frameIndex: number, layerId: string, updates: Partial<Layer>) => void
+  
+  // Face landmarks
+  setFaceLandmarks: (landmarks: DrawingState['faceLandmarks']) => void
+}
+
+const createDefaultLayer = (): Layer => ({
+  id: crypto.randomUUID(),
+  name: 'Layer 1',
+  visible: true,
+  opacity: 1,
+  imageData: '',
+})
+
+const createDefaultFrame = (): Frame => ({
+  id: crypto.randomUUID(),
+  layers: [createDefaultLayer()],
+  timestamp: Date.now(),
+})
+
+export const useAnimationStore = create<AnimationStore>((set) => ({
+  // Initial state
+  currentTool: 'brush',
+  brushSize: 5,
+  brushColor: '#000000',
+  currentFrameIndex: 0,
+  fps: 24,
+  isPlaying: false,
+  puppetMode: false,
+  darkMode: true,
+  onionSkinEnabled: false,
+  frames: [createDefaultFrame()],
+  rigs: [],
+  faceLandmarks: null,
+  history: [],
+  historyIndex: -1,
+  
+  // Drawing actions
+  setTool: (tool) => set({ currentTool: tool }),
+  setBrushSize: (size) => set({ brushSize: size }),
+  setBrushColor: (color) => set({ brushColor: color }),
+  
+  // Frame actions
+  setCurrentFrame: (index) => set({ currentFrameIndex: index }),
+  
+  addFrame: () => set((state) => {
+    const newFrame = createDefaultFrame()
+    return {
+      frames: [...state.frames, newFrame],
+      currentFrameIndex: state.frames.length,
+    }
+  }),
+  
+  deleteFrame: (index) => set((state) => {
+    if (state.frames.length <= 1) return state
+    const newFrames = state.frames.filter((_, i) => i !== index)
+    return {
+      frames: newFrames,
+      currentFrameIndex: Math.min(state.currentFrameIndex, newFrames.length - 1),
+    }
+  }),
+  
+  duplicateFrame: (index) => set((state) => {
+    const frameToDuplicate = state.frames[index]
+    const newFrame: Frame = {
+      id: crypto.randomUUID(),
+      layers: frameToDuplicate.layers.map(layer => ({
+        ...layer,
+        id: crypto.randomUUID(),
+      })),
+      timestamp: Date.now(),
+    }
+    const newFrames = [...state.frames]
+    newFrames.splice(index + 1, 0, newFrame)
+    return {
+      frames: newFrames,
+      currentFrameIndex: index + 1,
+    }
+  }),
+  
+  updateFrame: (index, frame) => set((state) => {
+    const newFrames = [...state.frames]
+    newFrames[index] = frame
+    return { frames: newFrames }
+  }),
+  
+  // Playback actions
+  setFps: (fps) => set({ fps }),
+  togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
+  setPlaying: (playing) => set({ isPlaying: playing }),
+  
+  // Mode toggles
+  togglePuppetMode: () => set((state) => ({ puppetMode: !state.puppetMode })),
+  toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
+  toggleOnionSkin: () => set((state) => ({ onionSkinEnabled: !state.onionSkinEnabled })),
+  
+  // History actions
+  undo: () => set((state) => {
+    if (state.historyIndex > 0) {
+      return { historyIndex: state.historyIndex - 1 }
+    }
+    return state
+  }),
+  
+  redo: () => set((state) => {
+    if (state.historyIndex < state.history.length - 1) {
+      return { historyIndex: state.historyIndex + 1 }
+    }
+    return state
+  }),
+  
+  pushHistory: (dataUrl) => set((state) => {
+    const newHistory = state.history.slice(0, state.historyIndex + 1)
+    newHistory.push(dataUrl)
+    // Keep max 50 history items
+    if (newHistory.length > 50) {
+      newHistory.shift()
+    }
+    return {
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    }
+  }),
+  
+  // Layer actions
+  addLayer: (frameIndex) => set((state) => {
+    const frame = state.frames[frameIndex]
+    if (frame.layers.length >= 5) return state
+    
+    const newLayer: Layer = {
+      id: crypto.randomUUID(),
+      name: `Layer ${frame.layers.length + 1}`,
+      visible: true,
+      opacity: 1,
+      imageData: '',
+    }
+    
+    const newFrames = [...state.frames]
+    newFrames[frameIndex] = {
+      ...frame,
+      layers: [...frame.layers, newLayer],
+    }
+    
+    return { frames: newFrames }
+  }),
+  
+  deleteLayer: (frameIndex, layerId) => set((state) => {
+    const frame = state.frames[frameIndex]
+    if (frame.layers.length <= 1) return state
+    
+    const newFrames = [...state.frames]
+    newFrames[frameIndex] = {
+      ...frame,
+      layers: frame.layers.filter(l => l.id !== layerId),
+    }
+    
+    return { frames: newFrames }
+  }),
+  
+  updateLayer: (frameIndex, layerId, updates) => set((state) => {
+    const newFrames = [...state.frames]
+    const frame = newFrames[frameIndex]
+    
+    newFrames[frameIndex] = {
+      ...frame,
+      layers: frame.layers.map(layer =>
+        layer.id === layerId ? { ...layer, ...updates } : layer
+      ),
+    }
+    
+    return { frames: newFrames }
+  }),
+  
+  // Face landmarks
+  setFaceLandmarks: (landmarks) => set({ faceLandmarks: landmarks }),
+}))

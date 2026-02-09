@@ -1,0 +1,24 @@
+# Cloudflare Pages Configuration
+name = "genai-galaxy-animate"
+compatibility_date = "2026-02-08"
+
+# Pages-specific configuration
+pages_build_output_dir = "dist"
+
+# This file is optional for Cloudflare Pages
+# Pages works without it, but it's useful for:
+# - Local development with Wrangler
+# - D1 database bindings (future)
+# - R2 storage bindings (future)
+# - Environment variables
+
+# Uncomment and configure if using D1 database (future)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "animate-db"
+# database_id = "your-database-id"
+
+# Uncomment and configure if using R2 storage (future)
+# [[r2_buckets]]
+# binding = "ASSETS"
+# bucket_name = "animate-assets"
