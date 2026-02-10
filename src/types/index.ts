@@ -61,6 +61,12 @@ export interface Rig {
   joints: Joint[]
 }
 
+export interface HistorySnapshot {
+  frames: Frame[]
+  currentFrameIndex: number
+  currentLayerIndex: number
+}
+
 export interface DrawingState {
   currentTool: Tool
   brushSize: number
@@ -76,7 +82,7 @@ export interface DrawingState {
   frames: Frame[]
   rigs: Rig[]
   faceLandmarks: NormalizedLandmark[] | null
-  history: string[] // dataURL snapshots for undo/redo
+  history: HistorySnapshot[]
   historyIndex: number
   selection: Selection | null
   zoom: number

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
-import { Stage, Layer, Line, Rect, Ellipse, Image, Transformer } from 'react-konva'
+import { Stage, Layer, Line, Rect, Ellipse, Image, Transformer, Text } from 'react-konva'
 import { useAnimationStore } from '../../store/useAnimationStore'
 import type { LineData, ShapeData } from '../../types'
 import Konva from 'konva'
@@ -16,6 +16,8 @@ export default function Canvas() {
   const [onionSkinImage, setOnionSkinImage] = useState<HTMLImageElement | null>(null)
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null)
   const [tempShape, setTempShape] = useState<{ start: { x: number; y: number } } | null>(null)
+  const [tempSelection, setTempSelection] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+  const [selectionImage, setSelectionImage] = useState<HTMLImageElement | null>(null)
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
 
   const {
@@ -63,7 +65,7 @@ export default function Canvas() {
           const dataUrl = stage.toDataURL()
           saveFrameDrawing(currentFrameIndex, currentLayerIndex, lines, shapes, dataUrl)
         }
-      }, 100)
+      }, 500)
       return () => clearTimeout(timer)
     }
   }, [lines, shapes, currentFrameIndex, currentLayerIndex, saveFrameDrawing, isDrawing])
@@ -83,6 +85,17 @@ export default function Canvas() {
       setOnionSkinImage(null)
     }
   }, [onionSkinEnabled, previousFrame, currentLayerIndex])
+
+  // Load selection image
+  useEffect(() => {
+    if (selection && selection.imageData) {
+      const img = new window.Image()
+      img.onload = () => setSelectionImage(img)
+      img.src = selection.imageData
+    } else {
+      setSelectionImage(null)
+    }
+  }, [selection])
 
   // Resize canvas to fit container
   useEffect(() => {
@@ -118,6 +131,103 @@ export default function Canvas() {
     }
   }
 
+  // Helper to convert hex color to RGB
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+    return result
+      ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16),
+        }
+      : null
+  }
+
+  // Flood fill helper
+  const floodFill = (x: number, y: number, fillColor: string) => {
+    const stage = stageRef.current
+    if (!stage) return
+
+    // Get canvas pixel data
+    const canvas = stage.toCanvas()
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    const pixels = imageData.data
+    const width = canvas.width
+    const height = canvas.height
+
+    // Convert fill color to RGB
+    const fillRgb = hexToRgb(fillColor)
+    if (!fillRgb) return
+
+    // Get target color at click position (adjust for zoom)
+    const canvasX = Math.floor(x * zoom)
+    const canvasY = Math.floor(y * zoom)
+    const startPos = (canvasY * width + canvasX) * 4
+    const targetR = pixels[startPos]
+    const targetG = pixels[startPos + 1]
+    const targetB = pixels[startPos + 2]
+    const targetA = pixels[startPos + 3]
+
+    // If clicking on same color, don't fill
+    if (
+      targetR === fillRgb.r &&
+      targetG === fillRgb.g &&
+      targetB === fillRgb.b &&
+      targetA === 255
+    ) {
+      return
+    }
+
+    // Stack-based flood fill
+    const stack: [number, number][] = [[canvasX, canvasY]]
+    const filled = new Set<string>()
+
+    while (stack.length > 0) {
+      const [px, py] = stack.pop()!
+      
+      if (px < 0 || px >= width || py < 0 || py >= height) continue
+      
+      const key = `${px},${py}`
+      if (filled.has(key)) continue
+      filled.add(key)
+
+      const pos = (py * width + px) * 4
+      const r = pixels[pos]
+      const g = pixels[pos + 1]
+      const b = pixels[pos + 2]
+      const a = pixels[pos + 3]
+
+      // Check if pixel matches target color
+      if (r === targetR && g === targetG && b === targetB && a === targetA) {
+        // Fill this pixel
+        pixels[pos] = fillRgb.r
+        pixels[pos + 1] = fillRgb.g
+        pixels[pos + 2] = fillRgb.b
+        pixels[pos + 3] = 255
+
+        // Add neighbors to stack
+        stack.push([px + 1, py])
+        stack.push([px - 1, py])
+        stack.push([px, py + 1])
+        stack.push([px, py - 1])
+      }
+
+      // Limit iterations to prevent freeze (about 50K pixels)
+      if (filled.size > 50000) break
+    }
+
+    // Put modified image data back
+    ctx.putImageData(imageData, 0, 0)
+    
+    // Convert canvas to dataURL and save
+    const dataUrl = canvas.toDataURL()
+    saveFrameDrawing(currentFrameIndex, currentLayerIndex, lines, shapes, dataUrl)
+    pushHistory()
+  }
+
 const handleMouseDown = () => {
     if (puppetMode) return
     
@@ -147,16 +257,37 @@ const handleMouseDown = () => {
         break
 
       case 'select':
-        // TODO: Implement selection
+        // Start drawing selection rectangle
+        setTempSelection({ x: pos.x, y: pos.y, width: 0, height: 0 })
         break
 
       case 'eyedropper':
-        // TODO: Implement eyedropper
-        break
+        // Sample color at click position
+        const stage = stageRef.current
+        if (stage) {
+          const canvas = stage.toCanvas()
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            const canvasX = Math.floor(pos.x * zoom)
+            const canvasY = Math.floor(pos.y * zoom)
+            const imageData = ctx.getImageData(canvasX, canvasY, 1, 1)
+            const pixel = imageData.data
+            const sampledColor = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1)}`
+            
+            // Import setBrushColor from store
+            const { setBrushColor, addColorToPalette } = useAnimationStore.getState()
+            setBrushColor(sampledColor)
+            addColorToPalette(sampledColor)
+          }
+        }
+        setIsDrawing(false)
+        return
 
       case 'fill':
-        // TODO: Implement fill tool
-        break
+        // Perform flood fill at click position
+        floodFill(pos.x, pos.y, brushColor)
+        setIsDrawing(false) // Fill is instant, no dragging
+        return // Early return to skip setIsDrawing(true)
     }
   }
 
@@ -182,6 +313,18 @@ const handleMouseDown = () => {
       case 'ellipse':
       case 'line':
         // Preview handled in render
+        break
+
+      case 'select':
+        // Update selection rectangle during drag
+        if (tempSelection) {
+          setTempSelection({
+            x: tempSelection.x,
+            y: tempSelection.y,
+            width: pos.x - tempSelection.x,
+            height: pos.y - tempSelection.y,
+          })
+        }
         break
     }
   }
@@ -220,11 +363,38 @@ const handleMouseDown = () => {
       setTempShape(null)
     }
 
+    // Finalize selection
+    if (currentTool === 'select' && tempSelection) {
+      // Normalize rectangle (handle negative width/height)
+      const x = tempSelection.width < 0 ? tempSelection.x + tempSelection.width : tempSelection.x
+      const y = tempSelection.height < 0 ? tempSelection.y + tempSelection.height : tempSelection.y
+      const width = Math.abs(tempSelection.width)
+      const height = Math.abs(tempSelection.height)
+
+      // Only create selection if it has size
+      if (width > 5 && height > 5) {
+        const stage = stageRef.current
+        if (stage) {
+          // Capture the selected area as image data
+          const dataUrl = stage.toDataURL({
+            x: x * zoom + panX,
+            y: y * zoom + panY,
+            width: width * zoom,
+            height: height * zoom,
+            pixelRatio: 1 / zoom,
+          })
+          
+          setSelection({ x, y, width, height, imageData: dataUrl })
+        }
+      }
+      
+      setTempSelection(null)
+    }
+
     // Save to history
     const stage = stageRef.current
     if (stage) {
-      const dataUrl = stage.toDataURL()
-      pushHistory(dataUrl)
+      pushHistory()
     }
   }
 
@@ -442,7 +612,7 @@ const handleMouseDown = () => {
           onTouchMove={handleMouseMove}
           onTouchEnd={handleMouseUp}
           onWheel={handleWheel}
-          draggable={currentTool === 'select'}
+          draggable={false}
           className={currentTool === 'brush' || currentTool === 'eraser' ? 'cursor-none' : 'cursor-crosshair'}
         >
           <Layer ref={layerRef}>
@@ -570,7 +740,45 @@ const handleMouseDown = () => {
                 dash={[5 / zoom, 5 / zoom]}
               />
             )}
-          </Layer>
+            {/* Selection rectangle preview (while dragging) */}
+            {tempSelection && currentTool === 'select' && (
+              <Rect
+                x={tempSelection.width < 0 ? tempSelection.x + tempSelection.width : tempSelection.x}
+                y={tempSelection.height < 0 ? tempSelection.y + tempSelection.height : tempSelection.y}
+                width={Math.abs(tempSelection.width)}
+                height={Math.abs(tempSelection.height)}
+                stroke="#3B82F6"
+                strokeWidth={2 / zoom}
+                dash={[8 / zoom, 4 / zoom]}
+                listening={false}
+              />
+            )}
+
+            {/* Active selection */}
+            {selection && currentTool === 'select' && selectionImage && (
+              <>
+                {/* Selection content */}
+                <Image
+                  image={selectionImage}
+                  x={selection.x}
+                  y={selection.y}
+                  width={selection.width}
+                  height={selection.height}
+                  draggable
+                />
+                {/* Selection border */}
+                <Rect
+                  x={selection.x}
+                  y={selection.y}
+                  width={selection.width}
+                  height={selection.height}
+                  stroke="#3B82F6"
+                  strokeWidth={2 / zoom}
+                  dash={[8 / zoom, 4 / zoom]}
+                  listening={false}
+                />
+              </>
+            )}          </Layer>
         </Stage>
       </div>
     </div>

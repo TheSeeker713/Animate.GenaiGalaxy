@@ -12,9 +12,22 @@ import WebcamPuppet from '../components/WebcamPuppet'
 export default function RasterStudio() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const { darkMode, toggleDarkMode, puppetMode } = useAnimationStore()
+  const { darkMode, toggleDarkMode, puppetMode, loadFromStorage, saveToStorage, frames } = useAnimationStore()
   const { getProjectById, setCurrentProject } = useProjectStore()
   const [showExportModal, setShowExportModal] = useState(false)
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    loadFromStorage()
+  }, [loadFromStorage])
+
+  // Auto-save to localStorage when frames change (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveToStorage()
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [frames, saveToStorage])
 
   // Load project on mount
   useEffect(() => {

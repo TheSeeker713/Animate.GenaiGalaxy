@@ -30,7 +30,11 @@ interface AnimationStore extends DrawingState {
   // History actions
   undo: () => void
   redo: () => void
-  pushHistory: (dataUrl: string) => void
+  pushHistory: () => void
+  
+  // Storage actions
+  saveToStorage: () => void
+  loadFromStorage: () => void
   
   // Layer actions
   setCurrentLayer: (index: number) => void
@@ -201,25 +205,54 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   // History actions
   undo: () => set((state) => {
     if (state.historyIndex > 0) {
-      return { historyIndex: state.historyIndex - 1 }
+      const newIndex = state.historyIndex - 1
+      const historicalState = state.history[newIndex]
+      return {
+        historyIndex: newIndex,
+        frames: JSON.parse(JSON.stringify(historicalState.frames)),
+        currentFrameIndex: historicalState.currentFrameIndex,
+        currentLayerIndex: historicalState.currentLayerIndex,
+      }
     }
     return state
   }),
   
   redo: () => set((state) => {
     if (state.historyIndex < state.history.length - 1) {
-      return { historyIndex: state.historyIndex + 1 }
+      const newIndex = state.historyIndex + 1
+      const historicalState = state.history[newIndex]
+      return {
+        historyIndex: newIndex,
+        frames: JSON.parse(JSON.stringify(historicalState.frames)),
+        currentFrameIndex: historicalState.currentFrameIndex,
+        currentLayerIndex: historicalState.currentLayerIndex,
+      }
     }
     return state
   }),
   
-  pushHistory: (dataUrl) => set((state) => {
+  pushHistory: () => set((state) => {
+    // Remove any history after current index (branching)
     const newHistory = state.history.slice(0, state.historyIndex + 1)
-    newHistory.push(dataUrl)
+    
+    // Deep clone current state
+    const snapshot = {
+      frames: JSON.parse(JSON.stringify(state.frames)),
+      currentFrameIndex: state.currentFrameIndex,
+      currentLayerIndex: state.currentLayerIndex,
+    }
+    
+    newHistory.push(snapshot)
+    
     // Keep max 50 history items
     if (newHistory.length > 50) {
       newHistory.shift()
+      return {
+        history: newHistory,
+        historyIndex: newHistory.length - 1,
+      }
     }
+    
     return {
       history: newHistory,
       historyIndex: newHistory.length - 1,
@@ -298,4 +331,63 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   
   // Face landmarks
   setFaceLandmarks: (landmarks) => set({ faceLandmarks: landmarks }),
+  
+  // Storage actions
+  saveToStorage: () => {
+    const state = useAnimationStore.getState()
+    try {
+      const dataToSave = {
+        frames: state.frames,
+        currentFrameIndex: state.currentFrameIndex,
+        currentLayerIndex: state.currentLayerIndex,
+        fps: state.fps,
+        onionSkinEnabled: state.onionSkinEnabled,
+        darkMode: state.darkMode,
+        brushSize: state.brushSize,
+        brushColor: state.brushColor,
+        fillColor: state.fillColor,
+        colorPalette: state.colorPalette,
+        zoom: state.zoom,
+        panX: state.panX,
+        panY: state.panY,
+      }
+      localStorage.setItem('animate-project', JSON.stringify(dataToSave))
+      console.log('Project saved to localStorage')
+    } catch (error) {
+      console.error('Failed to save to localStorage:', error)
+      // If quota exceeded, try clearing old data
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
+        localStorage.removeItem('animate-project')
+        console.warn('Storage quota exceeded, cleared old data')
+      }
+    }
+  },
+  
+  loadFromStorage: () => set((state) => {
+    try {
+      const stored = localStorage.getItem('animate-project')
+      if (stored) {
+        const data = JSON.parse(stored)
+        console.log('Project loaded from localStorage')
+        return {
+          frames: data.frames || state.frames,
+          currentFrameIndex: data.currentFrameIndex ?? state.currentFrameIndex,
+          currentLayerIndex: data.currentLayerIndex ?? state.currentLayerIndex,
+          fps: data.fps ?? state.fps,
+          onionSkinEnabled: data.onionSkinEnabled ?? state.onionSkinEnabled,
+          darkMode: data.darkMode ?? state.darkMode,
+          brushSize: data.brushSize ?? state.brushSize,
+          brushColor: data.brushColor ?? state.brushColor,
+          fillColor: data.fillColor ?? state.fillColor,
+          colorPalette: data.colorPalette || state.colorPalette,
+          zoom: data.zoom ?? state.zoom,
+          panX: data.panX ?? state.panX,
+          panY: data.panY ?? state.panY,
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load from localStorage:', error)
+    }
+    return state
+  }),
 }))
