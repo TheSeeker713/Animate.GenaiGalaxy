@@ -43,6 +43,8 @@ interface AnimationStore extends DrawingState {
   addLayer: (frameIndex: number) => void
   deleteLayer: (frameIndex: number, layerId: string) => void
   updateLayer: (frameIndex: number, layerId: string, updates: Partial<Layer>) => void
+  reorderLayer: (frameIndex: number, fromIndex: number, toIndex: number) => void
+  mergeLayerDown: (frameIndex: number, layerIndex: number) => void
   
   // Selection actions
   setSelection: (selection: Selection | null) => void
@@ -68,6 +70,12 @@ const createDefaultLayer = (): Layer => ({
   imageData: '',
   lines: [],
   shapes: [],
+  blendMode: 'normal',
+  effects: {
+    blur: 0,
+    brightness: 0,
+    contrast: 0,
+  },
 })
 
 const createDefaultFrame = (): Frame => ({
@@ -310,6 +318,12 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
       imageData: '',
       lines: [],
       shapes: [],
+      blendMode: 'normal',
+      effects: {
+        blur: 0,
+        brightness: 0,
+        contrast: 0,
+      },
     }
     
     const newFrames = [...state.frames]
@@ -346,6 +360,98 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
     }
     
     return { frames: newFrames }
+  }),
+  
+  reorderLayer: (frameIndex, fromIndex, toIndex) => set((state) => {
+    if (fromIndex === toIndex) return state
+    
+    const newFrames = [...state.frames]
+    const frame = newFrames[frameIndex]
+    const newLayers = [...frame.layers]
+    
+    // Move layer from fromIndex to toIndex
+    const [movedLayer] = newLayers.splice(fromIndex, 1)
+    newLayers.splice(toIndex, 0, movedLayer)
+    
+    newFrames[frameIndex] = {
+      ...frame,
+      layers: newLayers,
+    }
+    
+    // Update current layer index to follow the moved layer if it was selected
+    let newCurrentLayerIndex = state.currentLayerIndex
+    if (state.currentLayerIndex === fromIndex) {
+      newCurrentLayerIndex = toIndex
+    } else if (fromIndex < state.currentLayerIndex && toIndex >= state.currentLayerIndex) {
+      newCurrentLayerIndex = state.currentLayerIndex - 1
+    } else if (fromIndex > state.currentLayerIndex && toIndex <= state.currentLayerIndex) {
+      newCurrentLayerIndex = state.currentLayerIndex + 1
+    }
+    
+    return {
+      frames: newFrames,
+      currentLayerIndex: newCurrentLayerIndex,
+    }
+  }),
+  
+  mergeLayerDown: (frameIndex, layerIndex) => set((state) => {
+    const frame = state.frames[frameIndex]
+    if (layerIndex === 0 || layerIndex >= frame.layers.length) return state
+    
+    // Can't merge if there's no layer below
+    const upperLayer = frame.layers[layerIndex]
+    const lowerLayer = frame.layers[layerIndex - 1]
+    
+    // Create a canvas to merge the layers
+    const canvas = document.createElement('canvas')
+    canvas.width = 800  // Use default canvas size
+    canvas.height = 600
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return state
+    
+    // Draw lower layer
+    if (lowerLayer.imageData) {
+      const lowerImg = new Image()
+      lowerImg.src = lowerLayer.imageData
+      ctx.globalAlpha = lowerLayer.opacity
+      ctx.drawImage(lowerImg, 0, 0)
+    }
+    
+    // Draw upper layer on top
+    if (upperLayer.imageData) {
+      const upperImg = new Image()
+      upperImg.src = upperLayer.imageData
+      ctx.globalAlpha = upperLayer.opacity
+      ctx.drawImage(upperImg, 0, 0)
+    }
+    
+    // Get merged image data
+    const mergedDataUrl = canvas.toDataURL()
+    
+    // Create new merged layer
+    const mergedLayer: Layer = {
+      ...lowerLayer,
+      name: `${lowerLayer.name} + ${upperLayer.name}`,
+      imageData: mergedDataUrl,
+      opacity: 1, // Reset opacity since it's already baked into the image
+      lines: [...lowerLayer.lines, ...upperLayer.lines],
+      shapes: [...lowerLayer.shapes, ...upperLayer.shapes],
+    }
+    
+    // Remove both layers and add merged layer
+    const newLayers = [...frame.layers]
+    newLayers.splice(layerIndex - 1, 2, mergedLayer)
+    
+    const newFrames = [...state.frames]
+    newFrames[frameIndex] = {
+      ...frame,
+      layers: newLayers,
+    }
+    
+    return {
+      frames: newFrames,
+      currentLayerIndex: Math.max(0, layerIndex - 1),
+    }
   }),
   
   // Selection actions

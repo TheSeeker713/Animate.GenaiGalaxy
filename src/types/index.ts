@@ -39,6 +39,12 @@ export interface Layer {
   imageData: string // dataURL
   lines: LineData[] // Vector drawing data
   shapes: ShapeData[] // Shape primitives
+  blendMode?: 'normal' | 'multiply' | 'screen' | 'overlay' | 'darken' | 'lighten'
+  effects?: {
+    blur?: number // 0-20
+    brightness?: number // -100 to 100
+    contrast?: number // -100 to 100
+  }
 }
 
 export interface Frame {
