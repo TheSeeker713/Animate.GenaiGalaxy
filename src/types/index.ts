@@ -45,6 +45,7 @@ export interface Frame {
   id: string
   layers: Layer[]
   timestamp: number
+  duration?: number // Duration in frames (1 = single frame, 2 = hold for 2 frames, etc.)
 }
 
 export interface Joint {

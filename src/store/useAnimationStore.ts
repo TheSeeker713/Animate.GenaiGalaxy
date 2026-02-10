@@ -13,7 +13,9 @@ interface AnimationStore extends DrawingState {
   addFrame: () => void
   deleteFrame: (index: number) => void
   duplicateFrame: (index: number) => void
+  reorderFrame: (fromIndex: number, toIndex: number) => void
   updateFrame: (index: number, frame: Frame) => void
+  updateFrameDuration: (index: number, duration: number) => void
   saveFrameDrawing: (frameIndex: number, layerIndex: number, lines: LineData[], shapes: ShapeData[], dataUrl: string) => void
   clearCurrentFrame: () => void
   
@@ -136,6 +138,7 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
         id: crypto.randomUUID(),
       })),
       timestamp: Date.now(),
+      duration: frameToDuplicate.duration,
     }
     const newFrames = [...state.frames]
     newFrames.splice(index + 1, 0, newFrame)
@@ -143,6 +146,39 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
       frames: newFrames,
       currentFrameIndex: index + 1,
     }
+  }),
+  
+  reorderFrame: (fromIndex, toIndex) => set((state) => {
+    if (fromIndex === toIndex) return state
+    const newFrames = [...state.frames]
+    const [movedFrame] = newFrames.splice(fromIndex, 1)
+    newFrames.splice(toIndex, 0, movedFrame)
+    
+    // Update current frame index to follow the moved frame if it was selected
+    let newCurrentIndex = state.currentFrameIndex
+    if (state.currentFrameIndex === fromIndex) {
+      newCurrentIndex = toIndex
+    } else if (fromIndex < state.currentFrameIndex && toIndex >= state.currentFrameIndex) {
+      newCurrentIndex = state.currentFrameIndex - 1
+    } else if (fromIndex > state.currentFrameIndex && toIndex <= state.currentFrameIndex) {
+      newCurrentIndex = state.currentFrameIndex + 1
+    }
+    
+    return {
+      frames: newFrames,
+      currentFrameIndex: newCurrentIndex,
+    }
+  }),
+  
+  updateFrameDuration: (index, duration) => set((state) => {
+    const newFrames = [...state.frames]
+    if (newFrames[index]) {
+      newFrames[index] = {
+        ...newFrames[index],
+        duration: Math.max(1, duration),
+      }
+    }
+    return { frames: newFrames }
   }),
   
   updateFrame: (index, frame) => set((state) => {
