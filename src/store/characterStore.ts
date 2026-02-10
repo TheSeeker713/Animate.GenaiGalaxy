@@ -14,6 +14,7 @@ interface CharacterState {
   showSkeleton: boolean
   showMorphHandles: boolean
   showGrid: boolean
+  selectedLayerId: string | null
   
   // Morph panel state
   selectedMorphCategory: 'body' | 'face' | 'style' | null
@@ -30,6 +31,8 @@ interface CharacterState {
   toggleMorphHandles: () => void
   toggleGrid: () => void
   setSelectedMorphCategory: (category: CharacterState['selectedMorphCategory']) => void
+  setSelectedLayer: (layerId: string | null) => void
+  updateLayerTransform: (layerId: string, transform: Partial<{ position: { x: number; y: number }; scale: { x: number; y: number }; rotation: number }>) => void
 }
 
 const generateId = () => `char-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -41,6 +44,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   selectedTool: 'select',
   showSkeleton: true,
   showMorphHandles: false,
+  selectedLayerId: null,
   showGrid: false,
   selectedMorphCategory: null,
   
@@ -183,5 +187,28 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   toggleSkeleton: () => set((state) => ({ showSkeleton: !state.showSkeleton })),
   toggleMorphHandles: () => set((state) => ({ showMorphHandles: !state.showMorphHandles })),
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
-  setSelectedMorphCategory: (category) => set({ selectedMorphCategory: category })
+  setSelectedMorphCategory: (category) => set({ selectedMorphCategory: category }),
+  
+  setSelectedLayer: (layerId) => set({ selectedLayerId: layerId }),
+  
+  updateLayerTransform: (layerId, transform) => {
+    const { currentCharacter } = get()
+    if (!currentCharacter) return
+    
+    const updatedCharacter = {
+      ...currentCharacter,
+      layers: currentCharacter.layers.map(layer =>
+        layer.id === layerId
+          ? {
+              ...layer,
+              position: transform.position || layer.position,
+              scale: transform.scale || layer.scale,
+              rotation: transform.rotation !== undefined ? transform.rotation : layer.rotation
+            }
+          : layer
+      )
+    }
+    
+    set({ currentCharacter: updatedCharacter })
+  }
 }))

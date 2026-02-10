@@ -17,7 +17,9 @@ export default function CharacterStudio() {
     selectedTool,
     showSkeleton,
     showGrid,
+    selectedLayerId,
     setSelectedTool,
+    setSelectedLayer,
     toggleSkeleton,
     toggleGrid
   } = useCharacterStore()
@@ -145,14 +147,23 @@ export default function CharacterStudio() {
                 {currentCharacter.layers.map((layer: CharacterLayer) => (
                   <div
                     key={layer.id}
-                    className="p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer"
+                    className={`p-2 rounded cursor-pointer transition ${
+                      selectedLayerId === layer.id 
+                        ? 'bg-blue-600 hover:bg-blue-700' 
+                        : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                    onClick={() => setSelectedLayer(layer.id)}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">{layer.name}</span>
+                      <span className={`text-sm ${selectedLayerId === layer.id ? 'font-bold' : ''}`}>
+                        {selectedLayerId === layer.id && '▶ '}
+                        {layer.name}
+                      </span>
                       <input
                         type="checkbox"
                         checked={layer.visible}
                         onChange={(e) => {
+                          e.stopPropagation()
                           const updated = {
                             ...currentCharacter,
                             layers: currentCharacter.layers.map((l: CharacterLayer) =>
@@ -161,6 +172,7 @@ export default function CharacterStudio() {
                           }
                           useCharacterStore.setState({ currentCharacter: updated })
                         }}
+                        onClick={(e) => e.stopPropagation()}
                         className="w-4 h-4"
                       />
                     </div>
@@ -250,6 +262,127 @@ export default function CharacterStudio() {
                     className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
+                
+                {selectedLayerId && (() => {
+                  const selectedLayer = currentCharacter.layers.find(l => l.id === selectedLayerId)
+                  if (!selectedLayer) return null
+                  
+                  return (
+                    <div className="pt-4 border-t border-gray-700">
+                      <h3 className="font-bold mb-3 text-blue-400">Selected Layer</h3>
+                      
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium mb-1 text-gray-400">Layer Name</label>
+                          <input
+                            type="text"
+                            value={selectedLayer.name}
+                            onChange={(e) => {
+                              const updated = {
+                                ...currentCharacter,
+                                layers: currentCharacter.layers.map((l: CharacterLayer) =>
+                                  l.id === selectedLayerId ? { ...l, name: e.target.value } : l
+                                )
+                              }
+                              useCharacterStore.setState({ currentCharacter: updated })
+                            }}
+                            className="w-full px-2 py-1 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+                          />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium mb-1 text-gray-400">X Position</label>
+                            <input
+                              type="number"
+                              value={Math.round(selectedLayer.position.x)}
+                              onChange={(e) => {
+                                const updated = {
+                                  ...currentCharacter,
+                                  layers: currentCharacter.layers.map((l: CharacterLayer) =>
+                                    l.id === selectedLayerId 
+                                      ? { ...l, position: { ...l.position, x: parseFloat(e.target.value) || 0 } } 
+                                      : l
+                                  )
+                                }
+                                useCharacterStore.setState({ currentCharacter: updated })
+                              }}
+                              className="w-full px-2 py-1 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium mb-1 text-gray-400">Y Position</label>
+                            <input
+                              type="number"
+                              value={Math.round(selectedLayer.position.y)}
+                              onChange={(e) => {
+                                const updated = {
+                                  ...currentCharacter,
+                                  layers: currentCharacter.layers.map((l: CharacterLayer) =>
+                                    l.id === selectedLayerId 
+                                      ? { ...l, position: { ...l.position, y: parseFloat(e.target.value) || 0 } } 
+                                      : l
+                                  )
+                                }
+                                useCharacterStore.setState({ currentCharacter: updated })
+                              }}
+                              className="w-full px-2 py-1 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-xs font-medium mb-1 text-gray-400">Opacity: {Math.round(selectedLayer.opacity * 100)}%</label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={selectedLayer.opacity}
+                            onChange={(e) => {
+                              const updated = {
+                                ...currentCharacter,
+                                layers: currentCharacter.layers.map((l: CharacterLayer) =>
+                                  l.id === selectedLayerId ? { ...l, opacity: parseFloat(e.target.value) } : l
+                                )
+                              }
+                              useCharacterStore.setState({ currentCharacter: updated })
+                            }}
+                            className="w-full"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-xs font-medium mb-1 text-gray-400">Rotation: {Math.round(selectedLayer.rotation)}°</label>
+                          <input
+                            type="range"
+                            min="-180"
+                            max="180"
+                            step="1"
+                            value={selectedLayer.rotation}
+                            onChange={(e) => {
+                              const updated = {
+                                ...currentCharacter,
+                                layers: currentCharacter.layers.map((l: CharacterLayer) =>
+                                  l.id === selectedLayerId ? { ...l, rotation: parseFloat(e.target.value) } : l
+                                )
+                              }
+                              useCharacterStore.setState({ currentCharacter: updated })
+                            }}
+                            className="w-full"
+                          />
+                        </div>
+                        
+                        <button
+                          onClick={() => setSelectedLayer(null)}
+                          className="w-full px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm transition"
+                        >
+                          Deselect Layer
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })()}
                 
                 <div>
                   <label className="block text-sm font-medium mb-1">Template</label>

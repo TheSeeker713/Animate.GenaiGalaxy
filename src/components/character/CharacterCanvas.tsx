@@ -15,7 +15,10 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
     currentCharacter,
     showSkeleton,
     showGrid,
-    selectedTool
+    selectedTool,
+    selectedLayerId,
+    setSelectedLayer,
+    updateLayerTransform
   } = useCharacterStore()
   
   const stageRef = useRef<Konva.Stage>(null)
@@ -133,6 +136,7 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
       .map((layer: CharacterLayer) => {
         const image = layer.imageData ? loadedImages.get(layer.imageData) : null
         const hasImage = !!image
+        const isSelected = layer.id === selectedLayerId
         
         // Calculate dimensions
         const imgWidth = hasImage ? image.width : 100
@@ -147,22 +151,36 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
             scaleY={layer.scale.y}
             rotation={layer.rotation}
             opacity={layer.opacity}
-          >
-            {hasImage ? (
-              // Render actual image
-              <>
-                <KonvaImage
-                  image={image}
-                  width={imgWidth}
-                  height={imgHeight}
-                  offsetX={imgWidth / 2}
-                  offsetY={imgHeight / 2}
-                />
+            draggable={selectedTool === 'select' && isSelected}
+            onClick={() => {
+              if (selectedTool === 'select') {
+                setSelectedLayer(layer.id)
+              }
+            }}
+            onDragEnd={(e) => {
+              if (isSelected) {
+                updateLayerTransform(layer.id, {
+                  position: { x: e.target.x(), y: e.target.y() }
+                })Selection border */}
+                {isSelected && (
+                  <Rect
+                    width={imgWidth}
+                    height={imgHeight}
+                    offsetX={imgWidth / 2}
+                    offsetY={imgHeight / 2}
+                    stroke="#3B82F6"
+                    strokeWidth={3}
+                    dash={[10, 5]}
+                    shadowColor="#3B82F6"
+                    shadowBlur={10}
+                    listening={false}
+                  />
+                )}
                 {/* Layer name label */}
                 <Text
                   text={layer.name}
                   fontSize={12}
-                  fill="white"
+                  fill={isSelected ? "#60A5FA" : "white"}
                   align="center"
                   width={imgWidth}
                   offsetX={imgWidth / 2}
@@ -171,6 +189,8 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
                   shadowBlur={4}
                   shadowOffset={{ x: 0, y: 0 }}
                   shadowOpacity={0.8}
+                  fontStyle={isSelected ? "bold" : "normal"}
+                  listening={false}
                 />
               </>
             ) : (
@@ -180,16 +200,35 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
                   width={100}
                   height={100}
                   fill="#4A5568"
-                  stroke="#718096"
-                  strokeWidth={2}
+                  stroke={isSelected ? "#3B82F6" : "#718096"}
+                  strokeWidth={isSelected ? 3 : 2}
                   cornerRadius={5}
                   offsetX={50}
                   offsetY={50}
+                  shadowColor={isSelected ? "#3B82F6" : "transparent"}
+                  shadowBlur={isSelected ? 10 : 0}
                 />
                 {/* Loading indicator or layer name */}
                 <Text
                   text={layer.imageData ? '⏳' : layer.name}
                   fontSize={layer.imageData ? 24 : 12}
+                  fill="white"
+                  align="center"
+                  width={100}
+                  offsetX={50}
+                  offsetY={layer.imageData ? 38 : -60}
+                  listening={false}
+                />
+                <Text
+                  text={layer.name}
+                  fontSize={10}
+                  fill={isSelected ? "#60A5FA" : "#9CA3AF"}
+                  align="center"
+                  width={100}
+                  offsetX={50}
+                  offsetY={-60}
+                  fontStyle={isSelected ? "bold" : "normal"}
+                  listening={falseyer.imageData ? 24 : 12}
                   fill="white"
                   align="center"
                   width={100}
@@ -319,8 +358,14 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
         width={width}
         height={height}
         onWheel={handleWheel}
-        draggable={selectedTool === 'select'}
+        draggable={selectedTool === 'select' && !selectedLayerId}
         onDragEnd={handleDragEnd}
+        onClick={(e) => {
+          // Deselect when clicking on empty canvas
+          if (e.target === e.target.getStage()) {
+            setSelectedLayer(null)
+          }
+        }}
         scaleX={scale}
         scaleY={scale}
         x={position.x}
