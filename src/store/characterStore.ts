@@ -16,6 +16,7 @@ interface CharacterState {
   showGrid: boolean
   selectedLayerId: string | null
   selectedBoneId: string | null
+  isPlaybackMode: boolean
   
   // Auto-save state
   lastSaved: Date | null
@@ -42,6 +43,7 @@ interface CharacterState {
   toggleSkeleton: () => void
   toggleMorphHandles: () => void
   toggleGrid: () => void
+  togglePlaybackMode: () => void
   setSelectedMorphCategory: (category: CharacterState['selectedMorphCategory']) => void
   setSelectedLayer: (layerId: string | null) => void
   setSelectedBone: (boneId: string | null) => void
@@ -97,6 +99,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   selectedLayerId: null,
   selectedBoneId: null,
   showGrid: false,
+  isPlaybackMode: false,
   lastSaved: null,
   isSaving: false,
   autoSaveEnabled: true,
@@ -277,6 +280,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   toggleSkeleton: () => set((state) => ({ showSkeleton: !state.showSkeleton })),
   toggleMorphHandles: () => set((state) => ({ showMorphHandles: !state.showMorphHandles })),
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
+  togglePlaybackMode: () => set((state) => ({ isPlaybackMode: !state.isPlaybackMode })),
   setSelectedMorphCategory: (category) => set({ selectedMorphCategory: category }),
   
   setSelectedLayer: (layerId) => set({ selectedLayerId: layerId }),

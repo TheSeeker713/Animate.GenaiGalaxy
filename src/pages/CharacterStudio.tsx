@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useCharacterStore } from '@/store/characterStore'
 import TemplateGallery from '@/components/character/TemplateGallery'
 import CharacterCanvas from '@/components/character/CharacterCanvas'
+import PlaybackCanvas from '@/components/character/PlaybackCanvas'
 import MorphPanel from '@/components/character/MorphPanel'
 import ExportModal from '@/components/character/ExportModal'
 import WebcamPanel from '@/components/character/WebcamPanel'
@@ -25,10 +26,12 @@ export default function CharacterStudio() {
     selectedLayerId,
     lastSaved,
     isSaving,
+    isPlaybackMode,
     setSelectedTool,
     setSelectedLayer,
     toggleSkeleton,
     toggleGrid,
+    togglePlaybackMode,
     undo,
     redo,
     canUndo,
@@ -276,6 +279,14 @@ export default function CharacterStudio() {
                 <p>Loading character...</p>
               </div>
             </div>
+          ) : isPlaybackMode && currentCharacter ? (
+            <PlaybackCanvas 
+              character={currentCharacter}
+              width={canvasSize.width}
+              height={canvasSize.height}
+              autoPlay={true}
+              animation="idle"
+            />
           ) : (
             <CharacterCanvas ref={canvasStageRef} width={canvasSize.width} height={canvasSize.height} />
           )}
@@ -283,44 +294,59 @@ export default function CharacterStudio() {
           {/* Canvas toolbar */}
           {currentCharacter && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 bg-gray-800 p-2 rounded-lg border border-gray-700">
+              {/* Mode Toggle */}
               <button
-                onClick={() => setSelectedTool('select')}
-                className={`px-3 py-2 rounded ${selectedTool === 'select' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-                title="Select"
+                onClick={togglePlaybackMode}
+                className={`px-3 py-2 rounded font-bold ${isPlaybackMode ? 'bg-purple-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+                title={isPlaybackMode ? 'Switch to Edit Mode' : 'Switch to Playback Mode'}
               >
-                🖱️
-              </button>
-              <button
-                onClick={() => setSelectedTool('bone')}
-                className={`px-3 py-2 rounded ${selectedTool === 'bone' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-                title="Bone Tool"
-              >
-                🦴
-              </button>
-              <button
-                onClick={() => setSelectedTool('morph')}
-                className={`px-3 py-2 rounded ${selectedTool === 'morph' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-                title="Morph Tool"
-              >
-                ⚙️
+                {isPlaybackMode ? '🎬' : '✏️'}
               </button>
               
               <div className="w-px bg-gray-600 mx-2"></div>
               
-              <button
-                onClick={toggleSkeleton}
-                className={`px-3 py-2 rounded ${showSkeleton ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-                title="Show Skeleton"
-              >
-                🦴
-              </button>
-              <button
-                onClick={toggleGrid}
-                className={`px-3 py-2 rounded ${showGrid ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-                title="Show Grid"
-              >
-                #️⃣
-              </button>
+              {!isPlaybackMode && (
+                <>
+                  <button
+                    onClick={() => setSelectedTool('select')}
+                    className={`px-3 py-2 rounded ${selectedTool === 'select' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+                    title="Select"
+                  >
+                    🖱️
+                  </button>
+                  <button
+                    onClick={() => setSelectedTool('bone')}
+                    className={`px-3 py-2 rounded ${selectedTool === 'bone' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+                    title="Bone Tool"
+                  >
+                    🦴
+                  </button>
+                  <button
+                    onClick={() => setSelectedTool('morph')}
+                    className={`px-3 py-2 rounded ${selectedTool === 'morph' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+                    title="Morph Tool"
+                  >
+                    ⚙️
+                  </button>
+                  
+                  <div className="w-px bg-gray-600 mx-2"></div>
+                  
+                  <button
+                    onClick={toggleSkeleton}
+                    className={`px-3 py-2 rounded ${showSkeleton ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+                    title="Show Skeleton"
+                  >
+                    🦴
+                  </button>
+                  <button
+                    onClick={toggleGrid}
+                    className={`px-3 py-2 rounded ${showGrid ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+                    title="Show Grid"
+                  >
+                    #
+                  </button>
+                </>
+              )}
             </div>
           )}
         </main>
