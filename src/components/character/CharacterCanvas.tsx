@@ -33,7 +33,6 @@ const CharacterCanvas = forwardRef<Konva.Stage, CharacterCanvasProps>(({ width, 
   const [position, setPosition] = useState({ x: width / 2, y: height / 2 })
   const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map())
   const [isDraggingHandle, setIsDraggingHandle] = useState(false)
-  const [transformStart, setTransformStart] = useState<{ x: number; y: number; width: number; height: number; rotation: number } | null>(null)
   const [hoveredBoneId, setHoveredBoneId] = useState<string | null>(null)
   
   // Handle zoom with mouse wheel
@@ -332,13 +331,6 @@ const CharacterCanvas = forwardRef<Konva.Stage, CharacterCanvasProps>(({ width, 
             draggable
             onDragStart={() => {
               setIsDraggingHandle(true)
-              setTransformStart({
-                x: layer.position.x,
-                y: layer.position.y,
-                width: scaledWidth,
-                height: scaledHeight,
-                rotation: layer.rotation
-              })
             }}
             onDragMove={(e) => {
               const node = e.target
@@ -373,7 +365,6 @@ const CharacterCanvas = forwardRef<Konva.Stage, CharacterCanvasProps>(({ width, 
             }}
             onDragEnd={() => {
               setIsDraggingHandle(false)
-              setTransformStart(null)
             }}
             onMouseEnter={(e) => {
               const container = e.target.getStage()?.container()
@@ -403,13 +394,6 @@ const CharacterCanvas = forwardRef<Konva.Stage, CharacterCanvasProps>(({ width, 
             draggable
             onDragStart={() => {
               setIsDraggingHandle(true)
-              setTransformStart({
-                x: layer.position.x,
-                y: layer.position.y,
-                width: scaledWidth,
-                height: scaledHeight,
-                rotation: layer.rotation
-              })
             }}
             onDragMove={(e) => {
               const node = e.target
@@ -438,7 +422,6 @@ const CharacterCanvas = forwardRef<Konva.Stage, CharacterCanvasProps>(({ width, 
             }}
             onDragEnd={() => {
               setIsDraggingHandle(false)
-              setTransformStart(null)
             }}
             onMouseEnter={(e) => {
               const container = e.target.getStage()?.container()
@@ -472,13 +455,6 @@ const CharacterCanvas = forwardRef<Konva.Stage, CharacterCanvasProps>(({ width, 
             draggable
             onDragStart={() => {
               setIsDraggingHandle(true)
-              setTransformStart({
-                x: layer.position.x,
-                y: layer.position.y,
-                width: scaledWidth,
-                height: scaledHeight,
-                rotation: layer.rotation
-              })
             }}
             onDragMove={(e) => {
               const node = e.target
@@ -499,7 +475,6 @@ const CharacterCanvas = forwardRef<Konva.Stage, CharacterCanvasProps>(({ width, 
             }}
             onDragEnd={() => {
               setIsDraggingHandle(false)
-              setTransformStart(null)
             }}
             onMouseEnter={(e) => {
               const container = e.target.getStage()?.container()

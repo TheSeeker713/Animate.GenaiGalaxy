@@ -56,7 +56,7 @@ interface CharacterState {
 const generateId = () => `char-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
 // Debounce timer for auto-save
-let autoSaveTimer: NodeJS.Timeout | null = null
+let autoSaveTimer: number | null = null
 const AUTO_SAVE_DELAY = 2000 // 2 seconds
 
 // Helper function to add to history

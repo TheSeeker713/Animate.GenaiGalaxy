@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
-import { Stage, Layer, Line, Rect, Ellipse, Image, Transformer, Text } from 'react-konva'
+import { Stage, Layer, Line, Rect, Ellipse, Image, Text } from 'react-konva'
 import { useAnimationStore } from '../../store/useAnimationStore'
 import type { LineData, ShapeData } from '../../types'
 import Konva from 'konva'
@@ -7,14 +7,12 @@ import Konva from 'konva'
 export default function Canvas() {
   const stageRef = useRef<Konva.Stage>(null)
   const layerRef = useRef<Konva.Layer>(null)
-  const transformerRef = useRef<Konva.Transformer>(null)
   
   const [lines, setLines] = useState<LineData[]>([])
   const [shapes, setShapes] = useState<ShapeData[]>([])
   const [isDrawing, setIsDrawing] = useState(false)
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 })
   const [onionSkinImage, setOnionSkinImage] = useState<HTMLImageElement | null>(null)
-  const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null)
   const [tempShape, setTempShape] = useState<{ start: { x: number; y: number } } | null>(null)
   const [tempSelection, setTempSelection] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const [selectionImage, setSelectionImage] = useState<HTMLImageElement | null>(null)
@@ -165,6 +163,13 @@ export default function Canvas() {
     // Get target color at click position (adjust for zoom)
     const canvasX = Math.floor(x * zoom)
     const canvasY = Math.floor(y * zoom)
+    
+    // Bounds check
+    if (canvasX < 0 || canvasX >= width || canvasY < 0 || canvasY >= height) {
+      console.warn('Fill position out of bounds')
+      return
+    }
+    
     const startPos = (canvasY * width + canvasX) * 4
     const targetR = pixels[startPos]
     const targetG = pixels[startPos + 1]
@@ -270,14 +275,18 @@ const handleMouseDown = () => {
           if (ctx) {
             const canvasX = Math.floor(pos.x * zoom)
             const canvasY = Math.floor(pos.y * zoom)
-            const imageData = ctx.getImageData(canvasX, canvasY, 1, 1)
-            const pixel = imageData.data
-            const sampledColor = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1)}`
             
-            // Import setBrushColor from store
-            const { setBrushColor, addColorToPalette } = useAnimationStore.getState()
-            setBrushColor(sampledColor)
-            addColorToPalette(sampledColor)
+            // Bounds check
+            if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
+              const imageData = ctx.getImageData(canvasX, canvasY, 1, 1)
+              const pixel = imageData.data
+              const sampledColor = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1)}`
+              
+              // Import setBrushColor from store
+              const { setBrushColor, addColorToPalette } = useAnimationStore.getState()
+              setBrushColor(sampledColor)
+              addColorToPalette(sampledColor)
+            }
           }
         }
         setIsDrawing(false)

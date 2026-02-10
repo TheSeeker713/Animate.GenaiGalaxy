@@ -19,6 +19,7 @@ export default function Timeline() {
 
   const animationFrameRef = useRef<number>()
   const lastFrameTimeRef = useRef<number>(0)
+  const frameTickCountRef = useRef<number>(0) // Track how many ticks the current frame has shown
   const timelineRef = useRef<HTMLDivElement>(null)
   
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -45,8 +46,20 @@ export default function Timeline() {
       const elapsed = currentTime - lastFrameTimeRef.current
 
       if (elapsed >= frameDuration) {
-        const nextFrame = (currentFrameIndex + 1) % frames.length
-        setCurrentFrame(nextFrame)
+        const currentFrame = frames[currentFrameIndex]
+        const frameDurationTicks = currentFrame?.duration || 1
+        
+        // Increment tick count
+        frameTickCountRef.current += 1
+        
+        // Check if we've shown this frame for its full duration
+        if (frameTickCountRef.current >= frameDurationTicks) {
+          // Advance to next frame
+          const nextFrame = (currentFrameIndex + 1) % frames.length
+          setCurrentFrame(nextFrame)
+          frameTickCountRef.current = 0 // Reset tick count for next frame
+        }
+        
         lastFrameTimeRef.current = currentTime
       }
 
@@ -60,7 +73,14 @@ export default function Timeline() {
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [isPlaying, fps, currentFrameIndex, frames.length, setCurrentFrame])
+  }, [isPlaying, fps, currentFrameIndex, frames, setCurrentFrame])
+
+  // Reset tick count when manually changing frames (not during playback)
+  useEffect(() => {
+    if (!isPlaying) {
+      frameTickCountRef.current = 0
+    }
+  }, [currentFrameIndex, isPlaying])
 
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
