@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAnimationStore } from '../../store/useAnimationStore'
+import type { Layer } from '../../types'
 
 export default function LayersPanel() {
   const {
@@ -50,7 +51,7 @@ export default function LayersPanel() {
   }
 
   // Double click to rename
-  const handleDoubleClick = (layer: any) => {
+  const handleDoubleClick = (layer: Layer) => {
     setEditingLayerId(layer.id)
     setEditingName(layer.name)
   }
@@ -63,14 +64,14 @@ export default function LayersPanel() {
   }
 
   return (
-    <div className="w-64 bg-gray-100 dark:bg-gray-800 border-l border-gray-300 dark:border-gray-700 flex flex-col">
+    <div className="w-72 studio-panel--soft border-l border-slate-800 flex flex-col">
       {/* Header */}
-      <div className="p-3 border-b border-gray-300 dark:border-gray-700">
+      <div className="p-3 border-b border-slate-800">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold">Layers</h3>
+          <h3 className="font-semibold text-slate-100">Layers</h3>
           <button
             onClick={() => addLayer(currentFrameIndex)}
-            className="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
+            className="studio-button-secondary text-sm"
             title="Add Layer"
           >
             + Add
@@ -79,7 +80,7 @@ export default function LayersPanel() {
       </div>
 
       {/* Layers List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-1">
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
         {[...layers].reverse().map((layer, reverseIndex) => {
           const actualIndex = layers.length - 1 - reverseIndex
           const isActive = actualIndex === currentLayerIndex
@@ -98,12 +99,12 @@ export default function LayersPanel() {
               onDrop={handleDrop}
               onClick={() => setCurrentLayer(actualIndex)}
               onDoubleClick={() => handleDoubleClick(layer)}
-              className={`p-2 rounded cursor-move transition ${
+              className={`p-2 rounded-xl cursor-move transition ${
                 isDragging ? 'opacity-50' : ''
-              } ${isDragOver ? 'border-t-2 border-blue-500' : ''} ${
+              } ${isDragOver ? 'border-t-2 border-emerald-400' : ''} ${
                 isActive
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600'
+                  ? 'bg-emerald-500/20 text-white border border-emerald-400/40'
+                  : 'bg-slate-900/60 text-slate-100 border border-slate-800 hover:bg-slate-900'
               }`}
             >
               {/* Layer Header */}
@@ -120,7 +121,7 @@ export default function LayersPanel() {
                     }}
                     onClick={(e) => e.stopPropagation()}
                     autoFocus
-                    className="text-sm font-medium px-1 rounded flex-1 text-black"
+                    className="text-sm font-medium px-2 rounded flex-1 text-slate-900 bg-white"
                   />
                 ) : (
                   <span className="text-sm font-medium" title="Double-click to rename">
@@ -137,7 +138,7 @@ export default function LayersPanel() {
                       })
                     }}
                     className={`text-xs px-1 ${
-                      isActive ? 'text-white' : 'text-gray-600 dark:text-gray-400'
+                      isActive ? 'text-white' : 'text-slate-400'
                     }`}
                     title={layer.visible ? 'Hide Layer' : 'Show Layer'}
                   >
@@ -152,8 +153,8 @@ export default function LayersPanel() {
                         mergeLayerDown(currentFrameIndex, actualIndex)
                       }}
                       className={`text-xs px-1 ${
-                        isActive ? 'text-white' : 'text-gray-600 dark:text-gray-400'
-                      } hover:text-green-500`}
+                        isActive ? 'text-white' : 'text-slate-400'
+                      } hover:text-emerald-300`}
                       title="Merge Layer Down"
                     >
                       ⬇️
@@ -168,8 +169,8 @@ export default function LayersPanel() {
                         deleteLayer(currentFrameIndex, layer.id)
                       }}
                       className={`text-xs px-1 ${
-                        isActive ? 'text-white' : 'text-gray-600 dark:text-gray-400'
-                      } hover:text-red-500`}
+                        isActive ? 'text-white' : 'text-slate-400'
+                      } hover:text-red-400`}
                       title="Delete Layer"
                     >
                       🗑️
@@ -180,7 +181,7 @@ export default function LayersPanel() {
 
               {/* Opacity Slider */}
               <div className="flex items-center gap-2 mb-2">
-                <label className="text-xs">Opacity:</label>
+                <label className="text-xs text-slate-400">Opacity:</label>
                 <input
                   type="range"
                   min="0"
@@ -192,17 +193,17 @@ export default function LayersPanel() {
                       opacity: Number(e.target.value) / 100,
                     })
                   }}
-                  className="flex-1"
+                  className="flex-1 studio-slider"
                   onClick={(e) => e.stopPropagation()}
                 />
-                <span className="text-xs w-8">
+                <span className="text-xs w-8 text-slate-200">
                   {Math.round(layer.opacity * 100)}%
                 </span>
               </div>
 
               {/* Blend Mode */}
               <div className="flex items-center gap-2 mb-2">
-                <label className="text-xs">Blend:</label>
+                <label className="text-xs text-slate-400">Blend:</label>
                 <select
                   value={layer.blendMode || 'normal'}
                   onChange={(e) => {
@@ -212,8 +213,8 @@ export default function LayersPanel() {
                     })
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className={`flex-1 text-xs rounded px-1 ${
-                    isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-600'
+                  className={`flex-1 text-xs rounded px-2 studio-input ${
+                    isActive ? 'border-emerald-400/60' : ''
                   }`}
                 >
                   <option value="normal">Normal</option>
@@ -231,8 +232,8 @@ export default function LayersPanel() {
                   e.stopPropagation()
                   setExpandedEffects(showEffects ? null : layer.id)
                 }}
-                className={`text-xs w-full text-left px-1 py-0.5 rounded ${
-                  isActive ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600'
+                className={`text-xs w-full text-left px-2 py-1 rounded studio-button-secondary ${
+                  isActive ? 'border-emerald-400/60' : ''
                 }`}
               >
                 {showEffects ? '▼' : '▶'} Effects
@@ -243,7 +244,7 @@ export default function LayersPanel() {
                 <div className="mt-2 space-y-2 text-xs" onClick={(e) => e.stopPropagation()}>
                   {/* Blur */}
                   <div className="flex items-center gap-2">
-                    <label className="w-16">Blur:</label>
+                    <label className="w-16 text-slate-400">Blur:</label>
                     <input
                       type="range"
                       min="0"
@@ -257,14 +258,14 @@ export default function LayersPanel() {
                           },
                         })
                       }}
-                      className="flex-1"
+                      className="flex-1 studio-slider"
                     />
-                    <span className="w-6">{layer.effects?.blur || 0}</span>
+                    <span className="w-6 text-slate-200">{layer.effects?.blur || 0}</span>
                   </div>
 
                   {/* Brightness */}
                   <div className="flex items-center gap-2">
-                    <label className="w-16">Bright:</label>
+                    <label className="w-16 text-slate-400">Bright:</label>
                     <input
                       type="range"
                       min="-100"
@@ -278,14 +279,14 @@ export default function LayersPanel() {
                           },
                         })
                       }}
-                      className="flex-1"
+                      className="flex-1 studio-slider"
                     />
-                    <span className="w-8">{layer.effects?.brightness || 0}</span>
+                    <span className="w-8 text-slate-200">{layer.effects?.brightness || 0}</span>
                   </div>
 
                   {/* Contrast */}
                   <div className="flex items-center gap-2">
-                    <label className="w-16">Contrast:</label>
+                    <label className="w-16 text-slate-400">Contrast:</label>
                     <input
                       type="range"
                       min="-100"
@@ -299,16 +300,16 @@ export default function LayersPanel() {
                           },
                         })
                       }}
-                      className="flex-1"
+                      className="flex-1 studio-slider"
                     />
-                    <span className="w-8">{layer.effects?.contrast || 0}</span>
+                    <span className="w-8 text-slate-200">{layer.effects?.contrast || 0}</span>
                   </div>
                 </div>
               )}
 
               {/* Layer Thumbnail Preview */}
               {layer.imageData && (
-                <div className="mt-2 border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+                <div className="mt-2 border border-slate-700 rounded overflow-hidden">
                   <img
                     src={layer.imageData}
                     alt={layer.name}
@@ -326,7 +327,7 @@ export default function LayersPanel() {
       </div>
 
       {/* Layer Info */}
-      <div className="p-2 border-t border-gray-300 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400">
+      <div className="p-2 border-t border-slate-800 text-xs text-slate-400">
         {layers.length} / 10 layers
       </div>
     </div>

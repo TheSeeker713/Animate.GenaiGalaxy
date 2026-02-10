@@ -150,15 +150,15 @@ export default function WebcamPuppet() {
 
   if (error) {
     return (
-      <div className="absolute top-20 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg max-w-xs">
-        <h3 className="font-bold mb-2">Error</h3>
-        <p className="text-sm">{error}</p>
+      <div className="absolute top-20 right-4 p-4 rounded-xl shadow-lg max-w-xs border border-red-500/40" style={{ background: 'var(--studio-surface)' }}>
+        <h3 className="font-bold mb-2 text-red-400">Error</h3>
+        <p className="text-sm text-[var(--studio-text-dim)]">{error}</p>
       </div>
     )
   }
 
   return (
-    <div className="absolute top-20 right-4 bg-gray-900 rounded-lg shadow-2xl overflow-hidden border-2 border-green-500">
+    <div className="absolute top-20 right-4 rounded-xl shadow-2xl overflow-hidden border-2 border-[var(--studio-accent)]" style={{ background: 'var(--studio-bg)' }}>
       <div className="relative">
         <Webcam
           ref={webcamRef}
@@ -179,13 +179,14 @@ export default function WebcamPuppet() {
         )}
       </div>
       
-      <div className="flex items-center justify-between p-2 bg-gray-800">
-        <span className="text-xs text-green-400">
+      <div className="flex items-center justify-between p-2" style={{ background: 'var(--studio-surface)' }}>
+        <span className="text-xs text-[var(--studio-accent)]">
           {isInitialized ? '● Live' : '⏳ Loading...'}
         </span>
         <button
           onClick={() => setShowDebug(!showDebug)}
-          className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded"
+          className="text-xs px-2 py-1 rounded-md text-[var(--studio-text-dim)] hover:text-[var(--studio-text)] transition-colors"
+          style={{ background: 'var(--studio-bg)' }}
         >
           {showDebug ? 'Hide' : 'Show'} Debug
         </button>

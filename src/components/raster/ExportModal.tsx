@@ -133,15 +133,15 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="studio-panel" style={{ width: '100%', maxWidth: '28rem', padding: '1.5rem' }}>
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Export Animation</h2>
+          <h2 className="text-lg font-bold text-[var(--studio-text)]">Export Animation</h2>
           <button
             onClick={onClose}
             disabled={isExporting}
-            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-2xl"
+            className="text-[var(--studio-text-dim)] hover:text-[var(--studio-accent)] text-2xl leading-none transition-colors"
           >
             ×
           </button>
@@ -152,18 +152,18 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
           <div className="space-y-4">
             {/* Format Selection */}
             <div>
-              <label className="block text-sm font-medium mb-2">Export Format</label>
+              <label className="block text-xs font-medium text-[var(--studio-text-dim)] mb-1">Export Format</label>
               <select
                 value={format}
                 onChange={(e) => setFormat(e.target.value as ExportFormat)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--studio-surface)] border border-[var(--studio-border)] text-[var(--studio-text)] focus:border-[var(--studio-accent)] focus:outline-none transition-colors"
               >
                 <option value="gif">GIF Animation (Looping)</option>
                 <option value="mp4">MP4/WebM Video</option>
                 <option value="png-sequence">PNG Sequence (Individual Frames)</option>
                 <option value="sprite-sheet">Sprite Sheet (Single Image)</option>
               </select>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-[var(--studio-text-dim)] mt-1">
                 {format === 'gif' && 'Animated GIF with transparency support'}
                 {format === 'mp4' && 'Video format (WebM with fallback to MP4)'}
                 {format === 'png-sequence' && 'Individual PNG files for each frame'}
@@ -173,23 +173,23 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
 
             {/* Dimensions */}
             <div>
-              <label className="block text-sm font-medium mb-2">Dimensions</label>
-              <div className="flex gap-2">
+              <label className="block text-xs font-medium text-[var(--studio-text-dim)] mb-1">Dimensions</label>
+              <div className="flex gap-2 items-center">
                 <input
                   type="number"
                   value={width}
                   onChange={(e) => setWidth(Number(e.target.value))}
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                  className="flex-1 px-3 py-2 rounded-lg text-sm bg-[var(--studio-surface)] border border-[var(--studio-border)] text-[var(--studio-text)] focus:border-[var(--studio-accent)] focus:outline-none"
                   placeholder="Width"
                   min="1"
                   max="4096"
                 />
-                <span className="flex items-center">×</span>
+                <span className="text-[var(--studio-text-dim)] text-sm">×</span>
                 <input
                   type="number"
                   value={height}
                   onChange={(e) => setHeight(Number(e.target.value))}
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                  className="flex-1 px-3 py-2 rounded-lg text-sm bg-[var(--studio-surface)] border border-[var(--studio-border)] text-[var(--studio-text)] focus:border-[var(--studio-accent)] focus:outline-none"
                   placeholder="Height"
                   min="1"
                   max="4096"
@@ -200,8 +200,8 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
             {/* FPS (not for sprite sheet) */}
             {format !== 'sprite-sheet' && (
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Frame Rate: {exportFps} FPS
+                <label className="block text-xs font-medium text-[var(--studio-text-dim)] mb-1">
+                  Frame Rate: <span className="text-[var(--studio-accent)]">{exportFps} FPS</span>
                 </label>
                 <input
                   type="range"
@@ -209,7 +209,7 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
                   max="60"
                   value={exportFps}
                   onChange={(e) => setExportFps(Number(e.target.value))}
-                  className="w-full"
+                  className="w-full accent-[var(--studio-accent)]"
                 />
               </div>
             )}
@@ -217,8 +217,8 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
             {/* Quality (GIF only) */}
             {format === 'gif' && (
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Quality: {quality}%
+                <label className="block text-xs font-medium text-[var(--studio-text-dim)] mb-1">
+                  Quality: <span className="text-[var(--studio-accent)]">{quality}%</span>
                 </label>
                 <input
                   type="range"
@@ -226,9 +226,9 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
                   max="100"
                   value={quality}
                   onChange={(e) => setQuality(Number(e.target.value))}
-                  className="w-full"
+                  className="w-full accent-[var(--studio-accent)]"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-[var(--studio-text-dim)] mt-1">
                   Higher quality = larger file size
                 </p>
               </div>
@@ -237,8 +237,8 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
             {/* Sprite Sheet Columns */}
             {format === 'sprite-sheet' && (
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Columns: {spriteColumns}
+                <label className="block text-xs font-medium text-[var(--studio-text-dim)] mb-1">
+                  Columns: <span className="text-[var(--studio-accent)]">{spriteColumns}</span>
                 </label>
                 <input
                   type="range"
@@ -246,9 +246,9 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
                   max="10"
                   value={spriteColumns}
                   onChange={(e) => setSpriteColumns(Number(e.target.value))}
-                  className="w-full"
+                  className="w-full accent-[var(--studio-accent)]"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-[var(--studio-text-dim)] mt-1">
                   Rows: {Math.ceil(frames.length / spriteColumns)} | Total frames: {frames.length}
                 </p>
               </div>
@@ -256,13 +256,13 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
 
             {/* Frame Count */}
             {format !== 'sprite-sheet' && (
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Total frames: <strong>{frames.length}</strong>
+              <div className="text-sm text-[var(--studio-text-dim)]">
+                Total frames: <strong className="text-[var(--studio-text)]">{frames.length}</strong>
               </div>
             )}
 
-            {/* Estimated File Size Info */}
-            <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 p-2 rounded">
+            {/* Info */}
+            <div className="text-xs text-[var(--studio-text-dim)] bg-[var(--studio-surface)] p-2.5 rounded-lg border border-[var(--studio-border)]">
               {format === 'gif' && '💡 GIF works best for short animations with limited colors'}
               {format === 'mp4' && '💡 Video format is best for longer, complex animations'}
               {format === 'png-sequence' && '💡 Individual PNGs will download separately'}
@@ -270,16 +270,17 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-1">
               <button
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                className="flex-1 px-4 py-2 rounded-lg text-sm border border-[var(--studio-border)] text-[var(--studio-text-dim)] hover:bg-[var(--studio-surface)] transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleExport}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-[var(--studio-bg)] transition-colors"
+                style={{ background: 'var(--studio-accent)' }}
               >
                 Export {getFormatLabel()}
               </button>
@@ -289,17 +290,17 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
           /* Progress Bar */
           <div className="space-y-4">
             <div className="text-center">
-              <div className="text-lg font-semibold mb-2">
+              <div className="text-base font-semibold mb-3 text-[var(--studio-text)]">
                 Exporting {getFormatLabel()}... {progress}%
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 overflow-hidden">
+              <div className="w-full bg-[var(--studio-surface)] rounded-full h-3 overflow-hidden border border-[var(--studio-border)]">
                 <div
-                  className="bg-blue-500 h-full transition-all duration-300"
-                  style={{ width: `${progress}%` }}
+                  className="h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${progress}%`, background: 'var(--studio-accent)' }}
                 />
               </div>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+            <p className="text-sm text-[var(--studio-text-dim)] text-center">
               {format === 'png-sequence' 
                 ? 'Downloading individual PNG files...' 
                 : `Please wait while we generate your ${getFormatLabel()}...`}

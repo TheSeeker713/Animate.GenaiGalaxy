@@ -19,15 +19,21 @@ function Timeline() {
 
   const animationFrameRef = useRef<number>()
   const lastFrameTimeRef = useRef<number>(0)
-  const frameTickCountRef = useRef<number>(0) // Track how many ticks the current frame has shown
+  const frameTickCountRef = useRef<number>(0)
   const timelineRef = useRef<HTMLDivElement>(null)
+
+  // Keep refs in sync for the playback loop (avoids stale closures & dep restarts)
+  const currentFrameRef = useRef(currentFrameIndex)
+  const framesRef = useRef(frames)
+  useEffect(() => { currentFrameRef.current = currentFrameIndex }, [currentFrameIndex])
+  useEffect(() => { framesRef.current = frames }, [frames])
   
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [editingDuration, setEditingDuration] = useState<number | null>(null)
   const [scrubbing, setScrubbing] = useState(false)
 
-  // Playback loop
+  // Playback loop — only restarts when isPlaying or fps change
   useEffect(() => {
     if (!isPlaying) {
       if (animationFrameRef.current) {
@@ -37,6 +43,7 @@ function Timeline() {
     }
 
     const frameDuration = 1000 / fps
+    lastFrameTimeRef.current = 0
     
     const animate = (currentTime: number) => {
       if (!lastFrameTimeRef.current) {
@@ -46,18 +53,16 @@ function Timeline() {
       const elapsed = currentTime - lastFrameTimeRef.current
 
       if (elapsed >= frameDuration) {
-        const currentFrame = frames[currentFrameIndex]
+        const idx = currentFrameRef.current
+        const currentFrame = framesRef.current[idx]
         const frameDurationTicks = currentFrame?.duration || 1
         
-        // Increment tick count
         frameTickCountRef.current += 1
         
-        // Check if we've shown this frame for its full duration
         if (frameTickCountRef.current >= frameDurationTicks) {
-          // Advance to next frame
-          const nextFrame = (currentFrameIndex + 1) % frames.length
+          const nextFrame = (idx + 1) % framesRef.current.length
           setCurrentFrame(nextFrame)
-          frameTickCountRef.current = 0 // Reset tick count for next frame
+          frameTickCountRef.current = 0
         }
         
         lastFrameTimeRef.current = currentTime
@@ -73,7 +78,7 @@ function Timeline() {
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [isPlaying, fps, currentFrameIndex, frames, setCurrentFrame])
+  }, [isPlaying, fps, setCurrentFrame])
 
   // Reset tick count when manually changing frames (not during playback)
   useEffect(() => {
@@ -144,12 +149,12 @@ function Timeline() {
   }
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-800 p-4">
+    <div className="studio-panel--soft p-4">
       {/* Playback Controls */}
       <div className="flex items-center gap-4 mb-4">
         <button
           onClick={togglePlay}
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition"
+          className="studio-button-primary"
           title="Play/Pause (Space)"
         >
           {isPlaying ? '⏸️ Pause' : '▶️ Play'}
@@ -158,50 +163,50 @@ function Timeline() {
         <button
           onClick={() => setCurrentFrame(Math.max(0, currentFrameIndex - 1))}
           disabled={currentFrameIndex === 0}
-          className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded disabled:opacity-50 transition"
+          className="tool-button disabled:opacity-50"
           title="Previous Frame (Q)"
         >
           ⏮️
         </button>
 
-        <span className="text-sm font-mono">
+        <span className="text-sm mono text-slate-200">
           {currentFrameIndex + 1} / {frames.length}
         </span>
 
         <button
           onClick={() => setCurrentFrame(Math.min(frames.length - 1, currentFrameIndex + 1))}
           disabled={currentFrameIndex === frames.length - 1}
-          className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded disabled:opacity-50 transition"
+          className="tool-button disabled:opacity-50"
           title="Next Frame (W)"
         >
           ⏭️
         </button>
 
-        <div className="flex items-center gap-2 ml-4 border-l border-gray-300 dark:border-gray-600 pl-4">
-          <label className="text-sm">FPS:</label>
+        <div className="flex items-center gap-2 ml-4 border-l border-slate-700 pl-4">
+          <label className="text-xs uppercase tracking-wide text-slate-400">FPS</label>
           <input
             type="range"
             min="12"
             max="60"
             value={fps}
             onChange={(e) => setFps(Number(e.target.value))}
-            className="w-32"
+            className="w-32 studio-slider"
           />
-          <span className="text-sm font-mono w-8">{fps}</span>
+          <span className="text-sm mono w-8 text-slate-200">{fps}</span>
         </div>
 
         {/* Frame Management */}
         <div className="flex gap-2 ml-auto">
           <button
             onClick={() => addFrame()}
-            className="px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded transition"
+            className="studio-button-secondary"
             title="Add Frame"
           >
             ➕ Add
           </button>
           <button
             onClick={() => duplicateFrame(currentFrameIndex)}
-            className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded transition"
+            className="studio-button-primary"
             title="Duplicate Frame"
           >
             📋 Duplicate
@@ -209,7 +214,7 @@ function Timeline() {
           <button
             onClick={() => deleteFrame(currentFrameIndex)}
             disabled={frames.length <= 1}
-            className="px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded disabled:opacity-50 transition"
+            className="tool-button tool-button--danger disabled:opacity-50"
             title="Delete Frame"
           >
             🗑️ Delete
@@ -219,13 +224,13 @@ function Timeline() {
 
       {/* Timeline Ruler */}
       <div className="mb-2 relative">
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 flex justify-between">
+        <div className="text-xs text-slate-400 mb-1 flex justify-between">
           <span>Timeline (Total: {getTotalDuration()} frames @ {fps} FPS = {(getTotalDuration() / fps).toFixed(2)}s)</span>
           <span>Drag frames to reorder • Click timeline to scrub</span>
         </div>
         <div 
           ref={timelineRef}
-          className="h-8 bg-gray-300 dark:bg-gray-700 rounded relative cursor-pointer overflow-hidden"
+          className="h-8 studio-timeline rounded relative cursor-pointer overflow-hidden"
           onMouseDown={handleTimelineMouseDown}
           onMouseMove={handleTimelineMouseMove}
           onMouseUp={handleTimelineMouseUp}
@@ -243,13 +248,13 @@ function Timeline() {
             return (
               <div
                 key={frame.id}
-                className={`absolute top-0 bottom-0 border-r border-gray-400 dark:border-gray-600 transition ${
-                  isActive ? 'bg-blue-500' : 'bg-gray-400 dark:bg-gray-600'
+                className={`absolute top-0 bottom-0 border-r border-slate-700 transition ${
+                  isActive ? 'bg-emerald-400/80' : 'bg-slate-700'
                 }`}
                 style={{ left: `${left}%`, width: `${width}%` }}
                 title={`Frame ${index + 1} (${duration} frame${duration > 1 ? 's' : ''})`}
               >
-                <div className="text-xs text-white text-center leading-8 font-semibold">
+                <div className="text-xs text-slate-100 text-center leading-8 font-semibold">
                   {index + 1}
                 </div>
               </div>
@@ -258,12 +263,12 @@ function Timeline() {
           
           {/* Playhead marker */}
           <div
-            className="absolute top-0 bottom-0 w-0.5 bg-red-500 pointer-events-none z-10"
+            className="absolute top-0 bottom-0 w-0.5 bg-rose-400 pointer-events-none z-10"
             style={{ 
               left: `${(getFrameStartTime(currentFrameIndex) / getTotalDuration()) * 100}%` 
             }}
           >
-            <div className="absolute -top-1 -left-2 w-4 h-4 bg-red-500 rotate-45"></div>
+            <div className="absolute -top-1 -left-2 w-4 h-4 bg-rose-400 rotate-45"></div>
           </div>
         </div>
       </div>
@@ -289,8 +294,8 @@ function Timeline() {
                 onClick={() => setCurrentFrame(index)}
                 className={`w-24 h-20 rounded border-2 transition overflow-hidden ${
                   index === currentFrameIndex
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900'
-                    : 'border-gray-300 dark:border-gray-600 bg-gray-200 dark:bg-gray-700 hover:border-gray-400'
+                    ? 'border-emerald-400 bg-emerald-400/10'
+                    : 'border-slate-700 bg-slate-900/60 hover:border-slate-500'
                 }`}
               >
                 {thumbnail ? (
@@ -300,7 +305,7 @@ function Timeline() {
                     className="w-full h-full object-contain pointer-events-none"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-600 dark:text-gray-400">
+                  <div className="w-full h-full flex items-center justify-center text-xs text-slate-400">
                     Frame {index + 1}
                   </div>
                 )}
@@ -323,12 +328,12 @@ function Timeline() {
                       if (e.key === 'Enter') setEditingDuration(null)
                     }}
                     autoFocus
-                    className="w-12 px-1 py-0.5 text-xs text-center border rounded dark:bg-gray-700 dark:border-gray-600"
+                    className="w-12 px-1 py-0.5 text-xs text-center border rounded studio-input"
                   />
                 ) : (
                   <button
                     onClick={() => setEditingDuration(index)}
-                    className="text-xs px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                    className="text-xs px-1.5 py-0.5 rounded studio-button-secondary"
                     title="Click to edit frame duration"
                   >
                     ×{frame.duration || 1}

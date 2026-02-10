@@ -351,13 +351,20 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
     const frame = state.frames[frameIndex]
     if (frame.layers.length <= 1) return state
     
+    const deletedIndex = frame.layers.findIndex(l => l.id === layerId)
+    const newLayers = frame.layers.filter(l => l.id !== layerId)
     const newFrames = [...state.frames]
-    newFrames[frameIndex] = {
-      ...frame,
-      layers: frame.layers.filter(l => l.id !== layerId),
+    newFrames[frameIndex] = { ...frame, layers: newLayers }
+    
+    // Adjust currentLayerIndex so it doesn't go out of bounds
+    let newLayerIndex = state.currentLayerIndex
+    if (newLayerIndex >= newLayers.length) {
+      newLayerIndex = newLayers.length - 1
+    } else if (deletedIndex >= 0 && deletedIndex < newLayerIndex) {
+      newLayerIndex = newLayerIndex - 1
     }
     
-    return { frames: newFrames }
+    return { frames: newFrames, currentLayerIndex: Math.max(0, newLayerIndex) }
   }),
   
   updateLayer: (frameIndex, layerId, updates) => set((state) => {
@@ -406,65 +413,65 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
     }
   }),
   
-  mergeLayerDown: (frameIndex, layerIndex) => set((state) => {
+  mergeLayerDown: (frameIndex, layerIndex) => {
+    const state = useAnimationStore.getState()
     const frame = state.frames[frameIndex]
-    if (layerIndex === 0 || layerIndex >= frame.layers.length) return state
-    
-    // Can't merge if there's no layer below
+    if (layerIndex === 0 || layerIndex >= frame.layers.length) return
+
     const upperLayer = frame.layers[layerIndex]
     const lowerLayer = frame.layers[layerIndex - 1]
-    
-    // Create a canvas to merge the layers
-    const canvas = document.createElement('canvas')
-    canvas.width = 800  // Use default canvas size
-    canvas.height = 600
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return state
-    
-    // Draw lower layer
-    if (lowerLayer.imageData) {
-      const lowerImg = new Image()
-      lowerImg.src = lowerLayer.imageData
-      ctx.globalAlpha = lowerLayer.opacity
-      ctx.drawImage(lowerImg, 0, 0)
+
+    // Load images asynchronously, then merge
+    const loadImg = (src: string): Promise<HTMLImageElement> =>
+      new Promise((resolve, reject) => {
+        const img = new Image()
+        img.onload = () => resolve(img)
+        img.onerror = reject
+        img.src = src
+      })
+
+    const merge = async () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 800
+      canvas.height = 600
+      const ctx = canvas.getContext('2d')!
+
+      if (lowerLayer.imageData) {
+        const lowerImg = await loadImg(lowerLayer.imageData)
+        ctx.globalAlpha = lowerLayer.opacity
+        ctx.drawImage(lowerImg, 0, 0)
+      }
+
+      if (upperLayer.imageData) {
+        const upperImg = await loadImg(upperLayer.imageData)
+        ctx.globalAlpha = upperLayer.opacity
+        ctx.drawImage(upperImg, 0, 0)
+      }
+
+      const mergedDataUrl = canvas.toDataURL()
+
+      const mergedLayer: Layer = {
+        ...lowerLayer,
+        name: `${lowerLayer.name} + ${upperLayer.name}`,
+        imageData: mergedDataUrl,
+        opacity: 1,
+        lines: [...lowerLayer.lines, ...upperLayer.lines],
+        shapes: [...lowerLayer.shapes, ...upperLayer.shapes],
+      }
+
+      // Apply via set inside async callback
+      set((s) => {
+        const freshFrame = s.frames[frameIndex]
+        const newLayers = [...freshFrame.layers]
+        newLayers.splice(layerIndex - 1, 2, mergedLayer)
+        const newFrames = [...s.frames]
+        newFrames[frameIndex] = { ...freshFrame, layers: newLayers }
+        return { frames: newFrames, currentLayerIndex: Math.max(0, layerIndex - 1) }
+      })
     }
-    
-    // Draw upper layer on top
-    if (upperLayer.imageData) {
-      const upperImg = new Image()
-      upperImg.src = upperLayer.imageData
-      ctx.globalAlpha = upperLayer.opacity
-      ctx.drawImage(upperImg, 0, 0)
-    }
-    
-    // Get merged image data
-    const mergedDataUrl = canvas.toDataURL()
-    
-    // Create new merged layer
-    const mergedLayer: Layer = {
-      ...lowerLayer,
-      name: `${lowerLayer.name} + ${upperLayer.name}`,
-      imageData: mergedDataUrl,
-      opacity: 1, // Reset opacity since it's already baked into the image
-      lines: [...lowerLayer.lines, ...upperLayer.lines],
-      shapes: [...lowerLayer.shapes, ...upperLayer.shapes],
-    }
-    
-    // Remove both layers and add merged layer
-    const newLayers = [...frame.layers]
-    newLayers.splice(layerIndex - 1, 2, mergedLayer)
-    
-    const newFrames = [...state.frames]
-    newFrames[frameIndex] = {
-      ...frame,
-      layers: newLayers,
-    }
-    
-    return {
-      frames: newFrames,
-      currentLayerIndex: Math.max(0, layerIndex - 1),
-    }
-  }),
+
+    merge().catch(console.error)
+  },
   
   // Selection actions
   setSelection: (selection) => set({ selection }),

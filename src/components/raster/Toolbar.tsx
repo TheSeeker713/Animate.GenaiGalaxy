@@ -32,55 +32,37 @@ function Toolbar() {
   const [showColorPalette, setShowColorPalette] = useState(false)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
 
-  // Gloss button style helper
-  const getButtonStyle = (isActive: boolean) => ({
-    boxShadow: isActive
-      ? 'inset 0 2px 4px rgba(0,0,0,0.3), inset 0 -1px 0 rgba(255,255,255,0.1)'
-      : '0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
-    backgroundImage: isActive
-      ? 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.05) 100%)'
-      : 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%)'
-  })
-
-  const getButtonClass = (isActive: boolean) => 
-    `px-3 py-2 rounded transition ${
-      isActive
-        ? 'bg-gray-700 text-white'
-        : 'bg-gray-900 hover:bg-gray-800 text-gray-300'
-    }`
+  const getToolButtonClass = (isActive: boolean) =>
+    `tool-button ${isActive ? 'tool-button--active' : ''}`
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="studio-toolbar flex items-center gap-2 flex-wrap">
       {/* Drawing Tools */}
-      <div className="flex gap-1 border-r border-gray-700 pr-2">
+      <div className="tool-group">
         <button
           onClick={() => setTool('brush')}
-          className={getButtonClass(currentTool === 'brush')}
-          style={getButtonStyle(currentTool === 'brush')}
+          className={getToolButtonClass(currentTool === 'brush')}
           title="Brush (B)"
         >
           <Paintbrush size={18} />
         </button>
         <button
           onClick={() => setTool('eraser')}
-          className={getButtonClass(currentTool === 'eraser')}
-          style={getButtonStyle(currentTool === 'eraser')}
+          className={getToolButtonClass(currentTool === 'eraser')}
           title="Eraser (E)"
         >
           <Eraser size={18} />
         </button>
         <button
           onClick={() => setTool('select')}
-          className={getButtonClass(currentTool === 'select')}
-          style={getButtonStyle(currentTool === 'select')}
+          className={getToolButtonClass(currentTool === 'select')}
           title="Select (S)"
         >
           <MousePointer size={18} />
         </button>
         <button
           onClick={() => setTool('transform')}
-          className={getButtonClass(currentTool === 'transform')}
-          style={getButtonStyle(currentTool === 'transform')}
+          className={getToolButtonClass(currentTool === 'transform')}
           title="Transform (V)"
         >
           <Move size={18} />
@@ -88,47 +70,31 @@ function Toolbar() {
       </div>
 
       {/* Shape Tools */}
-      <div className="flex gap-1 border-r border-gray-700 pr-2">
+      <div className="tool-group">
         <button
           onClick={() => setTool('rectangle')}
-          className={`px-3 py-2 rounded transition ${
-            currentTool === 'rectangle'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-          }`}
+          className={getToolButtonClass(currentTool === 'rectangle')}
           title="Rectangle (R)"
         >
           <Square size={18} />
         </button>
         <button
           onClick={() => setTool('ellipse')}
-          className={`px-3 py-2 rounded transition ${
-            currentTool === 'ellipse'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-          }`}
+          className={getToolButtonClass(currentTool === 'ellipse')}
           title="Ellipse (C)"
         >
           <Circle size={18} />
         </button>
         <button
           onClick={() => setTool('line')}
-          className={`px-3 py-2 rounded transition ${
-            currentTool === 'line'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-          }`}
+          className={getToolButtonClass(currentTool === 'line')}
           title="Line (L)"
         >
           <Minus size={18} />
         </button>
         <button
           onClick={() => setTool('text')}
-          className={`px-3 py-2 rounded transition ${
-            currentTool === 'text'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-          }`}
+          className={getToolButtonClass(currentTool === 'text')}
           title="Text Tool (T)"
         >
           <Type size={18} />
@@ -136,25 +102,17 @@ function Toolbar() {
       </div>
 
       {/* Fill and Eyedropper */}
-      <div className="flex gap-1 border-r border-gray-300 dark:border-gray-600 pr-2">
+      <div className="tool-group">
         <button
           onClick={() => setTool('fill')}
-          className={`px-3 py-2 rounded transition ${
-            currentTool === 'fill'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-          }`}
+          className={getToolButtonClass(currentTool === 'fill')}
           title="Fill Tool (F)"
         >
           <Droplet size={18} />
         </button>
         <button
           onClick={() => setTool('eyedropper')}
-          className={`px-3 py-2 rounded transition ${
-            currentTool === 'eyedropper'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-          }`}
+          className={getToolButtonClass(currentTool === 'eyedropper')}
           title="Eyedropper (I)"
         >
           <Pipette size={18} />
@@ -162,21 +120,21 @@ function Toolbar() {
       </div>
 
       {/* Brush Settings */}
-      <div className="flex items-center gap-2 border-r border-gray-300 dark:border-gray-600 pr-2">
-        <label className="text-sm">Size:</label>
+      <div className="tool-group items-center">
+        <label className="text-xs uppercase tracking-wide text-slate-400">Size</label>
         <input
           type="range"
           min="1"
           max="50"
           value={brushSize}
           onChange={(e) => setBrushSize(Number(e.target.value))}
-          className="w-24"
+          className="studio-slider w-24"
         />
-        <span className="text-sm w-8">{brushSize}</span>
+        <span className="text-sm w-8 text-slate-200">{brushSize}</span>
       </div>
 
       {/* Color Picker with Palette */}
-      <div className="flex items-center gap-2 border-r border-gray-300 dark:border-gray-600 pr-2 relative">
+      <div className="tool-group items-center relative">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1">
             <input
@@ -186,20 +144,35 @@ function Toolbar() {
                 setBrushColor(e.target.value)
                 addColorToPalette(e.target.value)
               }}
-              className="w-10 h-6 rounded cursor-pointer"
+              className="w-10 h-6 rounded cursor-pointer studio-swatch"
               title="Stroke Color"
             />
-            <input
-              type="color"
-              value={fillColor}
-              onChange={(e) => setFillColor(e.target.value)}
-              className="w-10 h-6 rounded cursor-pointer"
-              title="Fill Color"
-            />
+            <div className="flex items-center gap-1">
+              <input
+                type="color"
+                value={fillColor === 'transparent' ? '#ffffff' : fillColor}
+                onChange={(e) => setFillColor(e.target.value)}
+                className="w-10 h-6 rounded cursor-pointer studio-swatch"
+                title="Fill Color (click 'No fill' to clear)"
+              />
+              <button
+                onClick={() => setFillColor(fillColor === 'transparent' ? '#ffffff' : 'transparent')}
+                className="text-xs px-1.5 py-0.5 rounded"
+                style={{
+                  background: fillColor === 'transparent' ? 'rgba(56,225,192,0.18)' : 'var(--studio-panel-2)',
+                  border: '1px solid var(--studio-border)',
+                  color: 'var(--studio-muted)',
+                  fontSize: '10px',
+                }}
+                title={fillColor === 'transparent' ? 'Fill is off' : 'Toggle fill off'}
+              >
+                {fillColor === 'transparent' ? '∅' : '■'}
+              </button>
+            </div>
           </div>
           <button
             onClick={() => setShowColorPalette(!showColorPalette)}
-            className="text-xs bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+            className="text-xs studio-button-secondary"
           >
             Palette ▾
           </button>
@@ -207,7 +180,7 @@ function Toolbar() {
 
         {/* Color Palette Dropdown */}
         {showColorPalette && (
-          <div className="absolute top-full left-0 mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg p-2 z-10">
+          <div className="absolute top-full left-0 mt-2 studio-popover p-2 z-10">
             <div className="grid grid-cols-5 gap-1">
               {colorPalette.map((color, i) => (
                 <button
@@ -216,7 +189,7 @@ function Toolbar() {
                     setBrushColor(color)
                     setShowColorPalette(false)
                   }}
-                  className="w-8 h-8 rounded border-2 border-gray-300 dark:border-gray-600 hover:scale-110 transition"
+                  className="w-8 h-8 rounded border-2 border-slate-700 hover:scale-110 transition"
                   style={{ backgroundColor: color }}
                   title={color}
                 />
@@ -232,11 +205,7 @@ function Toolbar() {
       {/* Puppet Mode Toggle */}
       <button
         onClick={togglePuppetMode}
-        className={`px-3 py-2 rounded transition ${
-          puppetMode
-            ? 'bg-green-500 text-white'
-            : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-        }`}
+        className={`tool-button ${puppetMode ? 'tool-button--active' : ''}`}
         title="Toggle Puppet Mode (P)"
       >
         🎭 Puppet
@@ -245,11 +214,7 @@ function Toolbar() {
       {/* Onion Skin Toggle */}
       <button
         onClick={toggleOnionSkin}
-        className={`px-3 py-2 rounded transition ${
-          onionSkinEnabled
-            ? 'bg-purple-500 text-white'
-            : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-        }`}
+        className={`tool-button ${onionSkinEnabled ? 'tool-button--active' : ''}`}
         title="Toggle Onion Skin (O)"
       >
         {onionSkinEnabled ? <Eye size={18} /> : <EyeOff size={18} />}
@@ -263,7 +228,7 @@ function Toolbar() {
             clearCurrentFrame()
           }
         }}
-        className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-red-500 hover:text-white rounded transition"
+        className="tool-button tool-button--danger"
         title="Clear Current Frame"
       >
         <Trash2 size={18} />
@@ -272,12 +237,12 @@ function Toolbar() {
 
       {/* Text Formatting (shown when text tool is active) */}
       {currentTool === 'text' && (
-        <div className="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-2">
-          <label className="text-sm">Font:</label>
+        <div className="tool-group items-center">
+          <label className="text-xs uppercase tracking-wide text-slate-400">Font</label>
           <select
             value={textFont}
             onChange={(e) => setTextFont(e.target.value)}
-            className="px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm"
+            className="studio-input text-sm"
           >
             <option value="Arial">Arial</option>
             <option value="Times New Roman">Times New Roman</option>
@@ -287,14 +252,14 @@ function Toolbar() {
             <option value="Comic Sans MS">Comic Sans MS</option>
             <option value="Impact">Impact</option>
           </select>
-          <label className="text-sm">Size:</label>
+          <label className="text-xs uppercase tracking-wide text-slate-400">Size</label>
           <input
             type="number"
             min="8"
             max="200"
             value={textSize}
             onChange={(e) => setTextSize(Number(e.target.value))}
-            className="w-16 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm"
+            className="w-16 studio-input text-sm"
           />
         </div>
       )}
@@ -302,7 +267,7 @@ function Toolbar() {
       {/* Keyboard Shortcuts Help */}
       <button
         onClick={() => setShowShortcutsHelp(!showShortcutsHelp)}
-        className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded transition ml-auto"
+        className="tool-button ml-auto"
         title="Keyboard Shortcuts (H)"
       >
         <Keyboard size={18} />
@@ -310,59 +275,59 @@ function Toolbar() {
 
       {/* Keyboard Shortcuts Modal */}
       {showShortcutsHelp && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowShortcutsHelp(false)}>
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-2xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowShortcutsHelp(false)}>
+          <div className="studio-popover rounded-lg p-6 max-w-2xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">Keyboard Shortcuts</h2>
-              <button onClick={() => setShowShortcutsHelp(false)} className="text-2xl hover:text-red-500">×</button>
+              <button onClick={() => setShowShortcutsHelp(false)} className="text-2xl hover:text-red-400">×</button>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <h3 className="font-bold mb-2 text-blue-500">Drawing Tools</h3>
+                <h3 className="font-bold mb-2 text-emerald-300">Drawing Tools</h3>
                 <div className="space-y-1 text-sm">
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">B</kbd> Brush</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">E</kbd> Eraser</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">S</kbd> Select</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">V</kbd> Transform</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">R</kbd> Rectangle</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">C</kbd> Circle</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">L</kbd> Line</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">T</kbd> Text</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">F</kbd> Fill</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">I</kbd> Eyedropper</div>
+                  <div><kbd className="studio-kbd">B</kbd> Brush</div>
+                  <div><kbd className="studio-kbd">E</kbd> Eraser</div>
+                  <div><kbd className="studio-kbd">S</kbd> Select</div>
+                  <div><kbd className="studio-kbd">V</kbd> Transform</div>
+                  <div><kbd className="studio-kbd">R</kbd> Rectangle</div>
+                  <div><kbd className="studio-kbd">C</kbd> Circle</div>
+                  <div><kbd className="studio-kbd">L</kbd> Line</div>
+                  <div><kbd className="studio-kbd">T</kbd> Text</div>
+                  <div><kbd className="studio-kbd">F</kbd> Fill</div>
+                  <div><kbd className="studio-kbd">I</kbd> Eyedropper</div>
                 </div>
               </div>
               <div>
-                <h3 className="font-bold mb-2 text-green-500">Playback & Animation</h3>
+                <h3 className="font-bold mb-2 text-amber-300">Playback & Animation</h3>
                 <div className="space-y-1 text-sm">
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Space</kbd> Play/Pause</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">←</kbd> Previous Frame</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">→</kbd> Next Frame</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">P</kbd> Toggle Puppet Mode</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">O</kbd> Toggle Onion Skin</div>
+                  <div><kbd className="studio-kbd">Space</kbd> Play/Pause</div>
+                  <div><kbd className="studio-kbd">←</kbd> Previous Frame</div>
+                  <div><kbd className="studio-kbd">→</kbd> Next Frame</div>
+                  <div><kbd className="studio-kbd">P</kbd> Toggle Puppet Mode</div>
+                  <div><kbd className="studio-kbd">O</kbd> Toggle Onion Skin</div>
                 </div>
               </div>
               <div>
-                <h3 className="font-bold mb-2 text-purple-500">View Controls</h3>
+                <h3 className="font-bold mb-2 text-sky-300">View Controls</h3>
                 <div className="space-y-1 text-sm">
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd</kbd> + <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">+</kbd> Zoom In</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd</kbd> + <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">-</kbd> Zoom Out</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd</kbd> + <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">0</kbd> Reset Zoom</div>
+                  <div><kbd className="studio-kbd">Ctrl/Cmd</kbd> + <kbd className="studio-kbd">+</kbd> Zoom In</div>
+                  <div><kbd className="studio-kbd">Ctrl/Cmd</kbd> + <kbd className="studio-kbd">-</kbd> Zoom Out</div>
+                  <div><kbd className="studio-kbd">Ctrl/Cmd</kbd> + <kbd className="studio-kbd">0</kbd> Reset Zoom</div>
                 </div>
               </div>
               <div>
-                <h3 className="font-bold mb-2 text-orange-500">Edit Commands</h3>
+                <h3 className="font-bold mb-2 text-rose-300">Edit Commands</h3>
                 <div className="space-y-1 text-sm">
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd</kbd> + <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Z</kbd> Undo</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd</kbd> + <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Shift</kbd> + <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Z</kbd> Redo</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd</kbd> + <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Y</kbd> Redo</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd</kbd> + <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">D</kbd> Duplicate Frame</div>
-                  <div><kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Ctrl/Cmd</kbd> + <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">E</kbd> Export</div>
+                  <div><kbd className="studio-kbd">Ctrl/Cmd</kbd> + <kbd className="studio-kbd">Z</kbd> Undo</div>
+                  <div><kbd className="studio-kbd">Ctrl/Cmd</kbd> + <kbd className="studio-kbd">Shift</kbd> + <kbd className="studio-kbd">Z</kbd> Redo</div>
+                  <div><kbd className="studio-kbd">Ctrl/Cmd</kbd> + <kbd className="studio-kbd">Y</kbd> Redo</div>
+                  <div><kbd className="studio-kbd">Ctrl/Cmd</kbd> + <kbd className="studio-kbd">D</kbd> Duplicate Frame</div>
+                  <div><kbd className="studio-kbd">Ctrl/Cmd</kbd> + <kbd className="studio-kbd">E</kbd> Export</div>
                 </div>
               </div>
             </div>
-            <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-              Press <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">H</kbd> or <kbd className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">?</kbd> to toggle this help panel
+            <div className="mt-4 text-sm text-slate-400">
+              Press <kbd className="studio-kbd">H</kbd> or <kbd className="studio-kbd">?</kbd> to toggle this help panel
             </div>
           </div>
         </div>

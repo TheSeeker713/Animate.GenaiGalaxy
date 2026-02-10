@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { Stage, Layer, Line, Rect, Ellipse, Image, Text } from 'react-konva'
 import { useAnimationStore } from '../../store/useAnimationStore'
 import type { LineData, ShapeData } from '../../types'
@@ -13,10 +13,23 @@ export default function Canvas() {
   const [isDrawing, setIsDrawing] = useState(false)
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 })
   const [onionSkinImage, setOnionSkinImage] = useState<HTMLImageElement | null>(null)
-  const [tempShape, setTempShape] = useState<{ start: { x: number; y: number } } | null>(null)
+  const [tempShape, setTempShape] = useState<{
+    start: { x: number; y: number }
+    end: { x: number; y: number }
+  } | null>(null)
   const [tempSelection, setTempSelection] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
   const [selectionImage, setSelectionImage] = useState<HTMLImageElement | null>(null)
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
+  const [shiftHeld, setShiftHeld] = useState(false)
+
+  // Track Shift key for snapping
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(true) }
+    const up = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(false) }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
+  }, [])
 
   const {
     currentTool,
@@ -242,11 +255,10 @@ const handleMouseDown = () => {
     const pos = getPointerPosition()
     if (!pos) return
 
-    setIsDrawing(true)
-
     switch (currentTool) {
       case 'brush':
       case 'eraser':
+        setIsDrawing(true)
         setLines([
           ...lines,
           {
@@ -261,16 +273,17 @@ const handleMouseDown = () => {
       case 'rectangle':
       case 'ellipse':
       case 'line':
-        setTempShape({ start: pos })
+        setIsDrawing(true)
+        setTempShape({ start: pos, end: pos })
         break
 
       case 'select':
-        // Start drawing selection rectangle
+        setIsDrawing(true)
         setTempSelection({ x: pos.x, y: pos.y, width: 0, height: 0 })
         break
 
-      case 'eyedropper':
-        // Sample color at click position
+      case 'eyedropper': {
+        // Sample color at click position — instant, no drag
         const stage = stageRef.current
         if (stage) {
           const canvas = stage.toCanvas()
@@ -279,30 +292,27 @@ const handleMouseDown = () => {
             const canvasX = Math.floor(pos.x * zoom)
             const canvasY = Math.floor(pos.y * zoom)
             
-            // Bounds check
             if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
               const imageData = ctx.getImageData(canvasX, canvasY, 1, 1)
               const pixel = imageData.data
               const sampledColor = `#${((1 << 24) + (pixel[0] << 16) + (pixel[1] << 8) + pixel[2]).toString(16).slice(1)}`
               
-              // Import setBrushColor from store
               const { setBrushColor, addColorToPalette } = useAnimationStore.getState()
               setBrushColor(sampledColor)
               addColorToPalette(sampledColor)
             }
           }
         }
-        setIsDrawing(false)
         return
+      }
 
       case 'fill':
-        // Perform flood fill at click position
+        // Flood fill — instant, no drag
         floodFill(pos.x, pos.y, brushColor)
-        setIsDrawing(false) // Fill is instant, no dragging
-        return // Early return to skip setIsDrawing(true)
+        return
 
-      case 'text':
-        // Prompt for text input and place text at click position
+      case 'text': {
+        // Prompt for text — instant, no drag
         const textInput = prompt('Enter text:')
         if (textInput && textInput.trim()) {
           const newTextShape: ShapeData = {
@@ -319,14 +329,13 @@ const handleMouseDown = () => {
           }
           setShapes([...shapes, newTextShape])
         }
-        setIsDrawing(false)
         return
+      }
 
       case 'transform':
-        // Transform only works if there's a selection
         if (selection) {
-          // Start transforming - tracking will be handled in mousemove
-          setTempShape({ start: pos })
+          setIsDrawing(true)
+          setTempShape({ start: pos, end: pos })
         }
         break
     }
@@ -343,18 +352,21 @@ const handleMouseDown = () => {
 
     switch (currentTool) {
       case 'brush':
-      case 'eraser':
+      case 'eraser': {
         const lastLine = lines[lines.length - 1]
         if (!lastLine) return
-        lastLine.points = lastLine.points.concat([pos.x, pos.y])
-        setLines([...lines.slice(0, -1), lastLine])
+        const updatedLine = { ...lastLine, points: [...lastLine.points, pos.x, pos.y] }
+        setLines([...lines.slice(0, -1), updatedLine])
         break
+      }
 
       case 'rectangle':
       case 'ellipse':
-      case 'line':
-        // Preview handled in render
+      case 'line': {
+        const snapped = applySnapping(tempShape?.start ?? pos, pos, currentTool, shiftHeld)
+        setTempShape((prev) => (prev ? { ...prev, end: snapped } : prev))
         break
+      }
 
       case 'select':
         // Update selection rectangle during drag
@@ -378,7 +390,7 @@ const handleMouseDown = () => {
             x: selection.x + dx,
             y: selection.y + dy,
           })
-          setTempShape({ start: pos }) // Update start position for next move
+          setTempShape({ start: pos, end: pos }) // Update start position for next move
         }
         break
     }
@@ -395,26 +407,32 @@ const handleMouseDown = () => {
     // Finalize shape tools
     if ((currentTool === 'rectangle' || currentTool === 'ellipse' || currentTool === 'line') && tempShape) {
       const start = tempShape.start
-      const newShape: ShapeData = {
-        id: crypto.randomUUID(),
-        type: currentTool,
-        x: Math.min(start.x, pos.x),
-        y: Math.min(start.y, pos.y),
-        width: Math.abs(pos.x - start.x),
-        height: Math.abs(pos.y - start.y),
-        x2: currentTool === 'line' ? pos.x : undefined,
-        y2: currentTool === 'line' ? pos.y : undefined,
-        color: brushColor,
-        strokeWidth: brushSize,
-        fill: fillColor !== 'transparent' ? fillColor : undefined,
-      }
+      const end = tempShape.end
+      // Only create shape if it has meaningful size
+      const dx = Math.abs(end.x - start.x)
+      const dy = Math.abs(end.y - start.y)
+      if (dx > 2 || dy > 2) {
+        const newShape: ShapeData = {
+          id: crypto.randomUUID(),
+          type: currentTool,
+          x: Math.min(start.x, end.x),
+          y: Math.min(start.y, end.y),
+          width: dx,
+          height: dy,
+          x2: currentTool === 'line' ? end.x : undefined,
+          y2: currentTool === 'line' ? end.y : undefined,
+          color: brushColor,
+          strokeWidth: brushSize,
+          fill: fillColor !== 'transparent' ? fillColor : undefined,
+        }
 
-      if (currentTool === 'line') {
-        newShape.x = start.x
-        newShape.y = start.y
-      }
+        if (currentTool === 'line') {
+          newShape.x = start.x
+          newShape.y = start.y
+        }
 
-      setShapes([...shapes, newShape])
+        setShapes([...shapes, newShape])
+      }
       setTempShape(null)
     }
 
@@ -449,19 +467,10 @@ const handleMouseDown = () => {
     // Finalize transform
     if (currentTool === 'transform' && tempShape) {
       setTempShape(null)
-      // Selection position is already updated during mousemove
-      // Just push to history
-      const stage = stageRef.current
-      if (stage) {
-        pushHistory()
-      }
     }
 
-    // Save to history
-    const stage = stageRef.current
-    if (stage) {
-      pushHistory()
-    }
+    // Save to history (single call)
+    pushHistory()
   }
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -496,36 +505,58 @@ const handleMouseDown = () => {
     setPan(newPos.x, newPos.y)
   }
 
-  // Render temp shape preview
+  // Snapping helper: constrain endpoint based on Shift key
+  const applySnapping = useCallback(
+    (start: { x: number; y: number }, end: { x: number; y: number }, tool: string, shift: boolean): { x: number; y: number } => {
+      if (!shift) return end
+      const dx = end.x - start.x
+      const dy = end.y - start.y
+      if (tool === 'line') {
+        // Snap to nearest 45° angle
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        const rawAngle = Math.atan2(dy, dx)
+        const snappedAngle = Math.round(rawAngle / (Math.PI / 4)) * (Math.PI / 4)
+        return { x: start.x + dist * Math.cos(snappedAngle), y: start.y + dist * Math.sin(snappedAngle) }
+      }
+      if (tool === 'rectangle' || tool === 'ellipse') {
+        // Force square / circle
+        const side = Math.max(Math.abs(dx), Math.abs(dy))
+        return { x: start.x + side * Math.sign(dx || 1), y: start.y + side * Math.sign(dy || 1) }
+      }
+      return end
+    },
+    []
+  )
+
+  // Render temp shape preview (both while drawing and as cursor preview)
   const renderTempShape = () => {
     if (!tempShape || !isDrawing) return null
 
-    const pos = getPointerPosition()
-    if (!pos) return null
-
     const start = tempShape.start
-    const width = Math.abs(pos.x - start.x)
-    const height = Math.abs(pos.y - start.y)
+    const end = tempShape.end
+    const w = Math.abs(end.x - start.x)
+    const h = Math.abs(end.y - start.y)
+    const snapLabel = shiftHeld ? ' ⌗' : ''
 
     switch (currentTool) {
       case 'rectangle':
         return (
           <>
             <Rect
-              x={Math.min(start.x, pos.x)}
-              y={Math.min(start.y, pos.y)}
-              width={width}
-              height={height}
+              x={Math.min(start.x, end.x)}
+              y={Math.min(start.y, end.y)}
+              width={w}
+              height={h}
               stroke={brushColor}
               strokeWidth={brushSize}
               fill={fillColor !== 'transparent' ? fillColor : undefined}
               dash={[5, 5]}
+              opacity={0.85}
             />
-            {/* Dimension label */}
             <Text
-              x={Math.min(start.x, pos.x) + width / 2}
-              y={Math.min(start.y, pos.y) - 20 / zoom}
-              text={`${Math.round(width)} × ${Math.round(height)}`}
+              x={Math.min(start.x, end.x) + w / 2}
+              y={Math.min(start.y, end.y) - 20 / zoom}
+              text={`${Math.round(w)} × ${Math.round(h)}${snapLabel}`}
               fontSize={12 / zoom}
               fill="white"
               stroke="black"
@@ -540,20 +571,20 @@ const handleMouseDown = () => {
         return (
           <>
             <Ellipse
-              x={start.x + (pos.x - start.x) / 2}
-              y={start.y + (pos.y - start.y) / 2}
-              radiusX={width / 2}
-              radiusY={height / 2}
+              x={start.x + (end.x - start.x) / 2}
+              y={start.y + (end.y - start.y) / 2}
+              radiusX={w / 2}
+              radiusY={h / 2}
               stroke={brushColor}
               strokeWidth={brushSize}
               fill={fillColor !== 'transparent' ? fillColor : undefined}
               dash={[5, 5]}
+              opacity={0.85}
             />
-            {/* Dimension label */}
             <Text
-              x={start.x + (pos.x - start.x) / 2}
-              y={start.y + (pos.y - start.y) / 2 - height / 2 - 20 / zoom}
-              text={`${Math.round(width)} × ${Math.round(height)}`}
+              x={start.x + (end.x - start.x) / 2}
+              y={start.y + (end.y - start.y) / 2 - h / 2 - 20 / zoom}
+              text={`${Math.round(w)} × ${Math.round(h)}${snapLabel}`}
               fontSize={12 / zoom}
               fill="white"
               stroke="black"
@@ -564,22 +595,25 @@ const handleMouseDown = () => {
             />
           </>
         )
-      case 'line':
-        const length = Math.sqrt(Math.pow(pos.x - start.x, 2) + Math.pow(pos.y - start.y, 2))
-        const angle = Math.atan2(pos.y - start.y, pos.x - start.x) * 180 / Math.PI
+      case 'line': {
+        const length = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2))
+        const angle = Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI
         return (
           <>
             <Line
-              points={[start.x, start.y, pos.x, pos.y]}
+              points={[start.x, start.y, end.x, end.y]}
               stroke={brushColor}
               strokeWidth={brushSize}
               dash={[5, 5]}
+              opacity={0.85}
             />
-            {/* Length and angle label */}
+            {/* Endpoint dots */}
+            <Ellipse x={start.x} y={start.y} radiusX={4 / zoom} radiusY={4 / zoom} fill={brushColor} listening={false} />
+            <Ellipse x={end.x} y={end.y} radiusX={4 / zoom} radiusY={4 / zoom} fill={brushColor} listening={false} />
             <Text
-              x={(start.x + pos.x) / 2}
-              y={(start.y + pos.y) / 2 - 15 / zoom}
-              text={`${Math.round(length)}px @ ${Math.round(angle)}°`}
+              x={(start.x + end.x) / 2}
+              y={(start.y + end.y) / 2 - 15 / zoom}
+              text={`${Math.round(length)}px @ ${Math.round(angle)}°${snapLabel}`}
               fontSize={12 / zoom}
               fill="white"
               stroke="black"
@@ -590,13 +624,80 @@ const handleMouseDown = () => {
             />
           </>
         )
+      }
+      default:
+        return null
+    }
+  }
+
+  // Live cursor preview for shape tools (shows outline at cursor before mousedown)
+  const renderShapeCursorPreview = () => {
+    if (!cursorPos || isDrawing) return null
+    if (currentTool !== 'rectangle' && currentTool !== 'ellipse' && currentTool !== 'line') return null
+
+    // Show a small ghost indicator at the cursor
+    switch (currentTool) {
+      case 'rectangle':
+        return (
+          <Rect
+            x={cursorPos.x - 12 / zoom}
+            y={cursorPos.y - 12 / zoom}
+            width={24 / zoom}
+            height={24 / zoom}
+            stroke={brushColor}
+            strokeWidth={1.5 / zoom}
+            dash={[3 / zoom, 3 / zoom]}
+            listening={false}
+            opacity={0.5}
+          />
+        )
+      case 'ellipse':
+        return (
+          <Ellipse
+            x={cursorPos.x}
+            y={cursorPos.y}
+            radiusX={12 / zoom}
+            radiusY={12 / zoom}
+            stroke={brushColor}
+            strokeWidth={1.5 / zoom}
+            dash={[3 / zoom, 3 / zoom]}
+            listening={false}
+            opacity={0.5}
+          />
+        )
+      case 'line':
+        return (
+          <>
+            <Line
+              points={[
+                cursorPos.x - 12 / zoom, cursorPos.y,
+                cursorPos.x + 12 / zoom, cursorPos.y
+              ]}
+              stroke={brushColor}
+              strokeWidth={1.5 / zoom}
+              listening={false}
+              opacity={0.5}
+            />
+            <Ellipse
+              x={cursorPos.x}
+              y={cursorPos.y}
+              radiusX={3 / zoom}
+              radiusY={3 / zoom}
+              fill={brushColor}
+              listening={false}
+              opacity={0.5}
+            />
+          </>
+        )
+      default:
+        return null
     }
   }
 
   return (
-    <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center relative">
+    <div className="w-full h-full studio-canvas flex items-center justify-center relative">
       {/* Tool Info Overlay */}
-      <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-2 rounded shadow-lg z-10 text-sm space-y-1">
+      <div className="absolute top-4 left-4 studio-overlay z-10 text-sm space-y-1">
         <div className="flex items-center gap-2">
           <span className="text-gray-400">Tool:</span>
           <strong className="capitalize flex items-center gap-1">
@@ -645,7 +746,7 @@ const handleMouseDown = () => {
 
       {/* Puppet mode indicator */}
       {puppetMode && (
-        <div className="absolute top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-10">
+        <div className="absolute top-4 right-4 studio-pill studio-pill--success z-10">
           🎭 Puppet Mode Active
           {faceLandmarks && (
             <span className="ml-2 text-sm">
@@ -657,7 +758,7 @@ const handleMouseDown = () => {
 
       {/* Onion skin indicator */}
       {onionSkinEnabled && currentFrameIndex > 0 && (
-        <div className="absolute top-16 right-4 bg-purple-500 text-white px-4 py-2 rounded-lg shadow-lg z-10">
+        <div className="absolute top-16 right-4 studio-pill studio-pill--info z-10">
           👻 Onion Skin
         </div>
       )}
@@ -682,12 +783,12 @@ const handleMouseDown = () => {
           className={currentTool === 'brush' || currentTool === 'eraser' ? 'cursor-none' : 'cursor-crosshair'}
         >
           <Layer ref={layerRef}>
-            {/* Canvas Background */}
+            {/* Canvas Background — fills entire visible area regardless of zoom */}
             <Rect
-              x={0}
-              y={0}
-              width={stageSize.width}
-              height={stageSize.height}
+              x={-panX / zoom}
+              y={-panY / zoom}
+              width={stageSize.width / zoom}
+              height={stageSize.height / zoom}
               fill={canvasColor}
               listening={false}
             />
@@ -773,10 +874,14 @@ const handleMouseDown = () => {
                   />
                 )
               }
+              return null
             })}
 
             {/* Temp shape preview */}
             {renderTempShape()}
+
+            {/* Shape cursor preview (before mousedown) */}
+            {renderShapeCursorPreview()}
 
             {/* Brush cursor preview */}
             {cursorPos && !isDrawing && (currentTool === 'brush' || currentTool === 'eraser') && (

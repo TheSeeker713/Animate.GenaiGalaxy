@@ -193,54 +193,44 @@ export default function RasterStudio() {
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'dark' : ''}`}>
-      <div className="flex flex-col h-screen bg-black text-white">
+    <div className={`min-h-screen ${darkMode ? 'dark' : ''} raster-shell`}>
+      <div className="flex flex-col h-screen">
         {/* Header with Toolbar */}
-        <header 
-          className="border-b border-gray-800"
-          style={{
-            background: 'linear-gradient(180deg, #1A1A1A 0%, #0A0A0A 100%)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
-          }}
-        >
-          <div className="flex items-center justify-between px-4 py-2">
+        <header className="studio-panel border-b border-slate-800">
+          <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-4">
               <button
                 onClick={handleBackToDashboard}
-                className="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition"
-                style={{
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
-                }}
+                className="tool-button"
                 title="Back to Dashboard (`)"
               >
                 ← 
               </button>
-              <h1 className="text-xl font-bold">Raster Animation Studio</h1>
+              <div>
+                <h1 className="text-xl font-bold tracking-wide">Raster Animation Studio</h1>
+                <p className="text-xs text-slate-400">Draw, animate, and export in one focused workspace</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowExportModal(true)}
-                className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition flex items-center gap-2"
-                style={{
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)'
-                }}
+                className="studio-button-primary"
                 title="Export Animation (Ctrl+E)"
               >
                 📥 Export
               </button>
             </div>
+          </div>
+          <div className="px-4 pb-3">
             <Toolbar />
           </div>
         </header>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex overflow-hidden bg-gray-900">
+        <div className="flex-1 flex overflow-hidden">
           {/* Canvas Area */}
-          <main className="flex-1 relative overflow-hidden flex items-center justify-center p-4">
-            <div 
-              className="relative rounded-lg overflow-hidden"
-              style={{
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)'
-              }}
-            >
+          <main className="flex-1 relative overflow-hidden flex items-center justify-center p-6">
+            <div className="relative rounded-2xl overflow-hidden studio-canvas-frame">
               <Canvas />
             </div>
             {puppetMode && <WebcamPuppet />}
@@ -254,13 +244,7 @@ export default function RasterStudio() {
         </div>
 
         {/* Timeline at Bottom */}
-        <footer 
-          className="border-t border-gray-800"
-          style={{
-            background: 'linear-gradient(180deg, #0A0A0A 0%, #000000 100%)',
-            boxShadow: '0 -2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
-          }}
-        >
+        <footer className="border-t border-slate-800">
           <Timeline />
         </footer>
 
@@ -279,31 +263,24 @@ function ZoomControls() {
   const { zoom, setZoom, resetView } = useAnimationStore()
 
   return (
-    <div 
-      className="absolute bottom-4 left-4 text-white rounded shadow-lg z-10 flex items-center gap-2 px-3 py-2"
-      style={{
-        background: 'linear-gradient(180deg, #2A2A2A 0%, #1A1A1A 100%)',
-        boxShadow: '0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
-        border: '1px solid rgba(255,255,255,0.1)'
-      }}
-    >
+    <div className="absolute bottom-4 left-4 studio-panel--soft rounded-full z-10 flex items-center gap-2 px-3 py-2">
       <button
         onClick={() => setZoom(zoom / 1.2)}
-        className="px-2 py-1 hover:bg-gray-700 rounded transition"
+        className="tool-button"
         title="Zoom Out (Ctrl+-)"
       >
         −
       </button>
       <button
         onClick={() => resetView()}
-        className="px-2 py-1 hover:bg-gray-700 rounded transition text-sm"
+        className="tool-button text-sm"
         title="Reset Zoom (Ctrl+0)"
       >
         {Math.round(zoom * 100)}%
       </button>
       <button
         onClick={() => setZoom(zoom * 1.2)}
-        className="px-2 py-1 hover:bg-gray-700 rounded transition"
+        className="tool-button"
         title="Zoom In (Ctrl++)"
       >
         +
