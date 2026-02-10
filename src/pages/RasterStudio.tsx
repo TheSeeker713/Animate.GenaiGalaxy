@@ -194,32 +194,37 @@ export default function RasterStudio() {
 
   return (
     <div className={`min-h-screen ${darkMode ? 'dark' : ''}`}>
-      <div className="flex flex-col h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+      <div className="flex flex-col h-screen bg-black text-white">
         {/* Header with Toolbar */}
-        <header className="border-b border-gray-200 dark:border-gray-700">
+        <header 
+          className="border-b border-gray-800"
+          style={{
+            background: 'linear-gradient(180deg, #1A1A1A 0%, #0A0A0A 100%)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
+          }}
+        >
           <div className="flex items-center justify-between px-4 py-2">
             <div className="flex items-center gap-4">
               <button
                 onClick={handleBackToDashboard}
-                className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                className="px-3 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition"
+                style={{
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
+                }}
                 title="Back to Dashboard (`)"
               >
                 ← 
               </button>
               <h1 className="text-xl font-bold">Raster Animation Studio</h1>
               <button
-                onClick={toggleDarkMode}
-                className="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-                title="Toggle Dark Mode (D)"
-              >
-                {darkMode ? '☀️' : '🌙'}
-              </button>
-              <button
                 onClick={() => setShowExportModal(true)}
-                className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition flex items-center gap-2"
-                title="Export as GIF"
+                className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition flex items-center gap-2"
+                style={{
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)'
+                }}
+                title="Export Animation (Ctrl+E)"
               >
-                📥 Export GIF
+                📥 Export
               </button>
             </div>
             <Toolbar />
@@ -227,10 +232,17 @@ export default function RasterStudio() {
         </header>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden bg-gray-900">
           {/* Canvas Area */}
-          <main className="flex-1 relative overflow-hidden">
-            <Canvas />
+          <main className="flex-1 relative overflow-hidden flex items-center justify-center p-4">
+            <div 
+              className="relative rounded-lg overflow-hidden"
+              style={{
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)'
+              }}
+            >
+              <Canvas />
+            </div>
             {puppetMode && <WebcamPuppet />}
             
             {/* Zoom Controls */}
@@ -242,7 +254,13 @@ export default function RasterStudio() {
         </div>
 
         {/* Timeline at Bottom */}
-        <footer className="border-t border-gray-200 dark:border-gray-700">
+        <footer 
+          className="border-t border-gray-800"
+          style={{
+            background: 'linear-gradient(180deg, #0A0A0A 0%, #000000 100%)',
+            boxShadow: '0 -2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
+          }}
+        >
           <Timeline />
         </footer>
 
@@ -261,7 +279,14 @@ function ZoomControls() {
   const { zoom, setZoom, resetView } = useAnimationStore()
 
   return (
-    <div className="absolute bottom-4 left-4 bg-gray-900/80 text-white rounded shadow-lg z-10 flex items-center gap-2 px-3 py-2">
+    <div 
+      className="absolute bottom-4 left-4 text-white rounded shadow-lg z-10 flex items-center gap-2 px-3 py-2"
+      style={{
+        background: 'linear-gradient(180deg, #2A2A2A 0%, #1A1A1A 100%)',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
+        border: '1px solid rgba(255,255,255,0.1)'
+      }}
+    >
       <button
         onClick={() => setZoom(zoom / 1.2)}
         className="px-2 py-1 hover:bg-gray-700 rounded transition"

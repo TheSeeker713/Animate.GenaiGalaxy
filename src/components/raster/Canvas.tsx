@@ -25,6 +25,7 @@ export default function Canvas() {
     fillColor,
     textSize,
     textFont,
+    canvasColor,
     puppetMode,
     onionSkinEnabled,
     currentFrameIndex,
@@ -681,6 +682,16 @@ const handleMouseDown = () => {
           className={currentTool === 'brush' || currentTool === 'eraser' ? 'cursor-none' : 'cursor-crosshair'}
         >
           <Layer ref={layerRef}>
+            {/* Canvas Background */}
+            <Rect
+              x={0}
+              y={0}
+              width={stageSize.width}
+              height={stageSize.height}
+              fill={canvasColor}
+              listening={false}
+            />
+            
             {/* Onion skin - previous frame */}
             {onionSkinEnabled && onionSkinImage && (
               <Image

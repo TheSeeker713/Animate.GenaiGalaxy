@@ -1,5 +1,10 @@
 import { useState, memo } from 'react'
 import { useAnimationStore } from '../../store/useAnimationStore'
+import CanvasColorPicker from './CanvasColorPicker'
+import { 
+  Paintbrush, Eraser, MousePointer, Move, Square, Circle, Minus, 
+  Type, Droplet, Pipette, Eye, EyeOff, Trash2, Keyboard 
+} from 'lucide-react'
 
 function Toolbar() {
   const {
@@ -27,58 +32,63 @@ function Toolbar() {
   const [showColorPalette, setShowColorPalette] = useState(false)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
 
+  // Gloss button style helper
+  const getButtonStyle = (isActive: boolean) => ({
+    boxShadow: isActive
+      ? 'inset 0 2px 4px rgba(0,0,0,0.3), inset 0 -1px 0 rgba(255,255,255,0.1)'
+      : '0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+    backgroundImage: isActive
+      ? 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.05) 100%)'
+      : 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%)'
+  })
+
+  const getButtonClass = (isActive: boolean) => 
+    `px-3 py-2 rounded transition ${
+      isActive
+        ? 'bg-gray-700 text-white'
+        : 'bg-gray-900 hover:bg-gray-800 text-gray-300'
+    }`
+
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {/* Drawing Tools */}
-      <div className="flex gap-1 border-r border-gray-300 dark:border-gray-600 pr-2">
+      <div className="flex gap-1 border-r border-gray-700 pr-2">
         <button
           onClick={() => setTool('brush')}
-          className={`px-3 py-2 rounded transition ${
-            currentTool === 'brush'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-          }`}
+          className={getButtonClass(currentTool === 'brush')}
+          style={getButtonStyle(currentTool === 'brush')}
           title="Brush (B)"
         >
-          🖌️
+          <Paintbrush size={18} />
         </button>
         <button
           onClick={() => setTool('eraser')}
-          className={`px-3 py-2 rounded transition ${
-            currentTool === 'eraser'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-          }`}
+          className={getButtonClass(currentTool === 'eraser')}
+          style={getButtonStyle(currentTool === 'eraser')}
           title="Eraser (E)"
         >
-          🧹
+          <Eraser size={18} />
         </button>
         <button
           onClick={() => setTool('select')}
-          className={`px-3 py-2 rounded transition ${
-            currentTool === 'select'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-          }`}
+          className={getButtonClass(currentTool === 'select')}
+          style={getButtonStyle(currentTool === 'select')}
           title="Select (S)"
         >
-          ⬚
+          <MousePointer size={18} />
         </button>
         <button
           onClick={() => setTool('transform')}
-          className={`px-3 py-2 rounded transition ${
-            currentTool === 'transform'
-              ? 'bg-blue-500 text-white'
-              : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
-          }`}
+          className={getButtonClass(currentTool === 'transform')}
+          style={getButtonStyle(currentTool === 'transform')}
           title="Transform (V)"
         >
-          ⤢
+          <Move size={18} />
         </button>
       </div>
 
       {/* Shape Tools */}
-      <div className="flex gap-1 border-r border-gray-300 dark:border-gray-600 pr-2">
+      <div className="flex gap-1 border-r border-gray-700 pr-2">
         <button
           onClick={() => setTool('rectangle')}
           className={`px-3 py-2 rounded transition ${
@@ -88,7 +98,7 @@ function Toolbar() {
           }`}
           title="Rectangle (R)"
         >
-          ▭
+          <Square size={18} />
         </button>
         <button
           onClick={() => setTool('ellipse')}
@@ -99,7 +109,7 @@ function Toolbar() {
           }`}
           title="Ellipse (C)"
         >
-          ⬭
+          <Circle size={18} />
         </button>
         <button
           onClick={() => setTool('line')}
@@ -110,7 +120,7 @@ function Toolbar() {
           }`}
           title="Line (L)"
         >
-          ╱
+          <Minus size={18} />
         </button>
         <button
           onClick={() => setTool('text')}
@@ -121,7 +131,7 @@ function Toolbar() {
           }`}
           title="Text Tool (T)"
         >
-          T
+          <Type size={18} />
         </button>
       </div>
 
@@ -136,7 +146,7 @@ function Toolbar() {
           }`}
           title="Fill Tool (F)"
         >
-          🪣
+          <Droplet size={18} />
         </button>
         <button
           onClick={() => setTool('eyedropper')}
@@ -147,7 +157,7 @@ function Toolbar() {
           }`}
           title="Eyedropper (I)"
         >
-          💉
+          <Pipette size={18} />
         </button>
       </div>
 
@@ -216,6 +226,9 @@ function Toolbar() {
         )}
       </div>
 
+      {/* Canvas Color Picker */}
+      <CanvasColorPicker />
+
       {/* Puppet Mode Toggle */}
       <button
         onClick={togglePuppetMode}
@@ -239,7 +252,8 @@ function Toolbar() {
         }`}
         title="Toggle Onion Skin (O)"
       >
-        👻
+        {onionSkinEnabled ? <Eye size={18} /> : <EyeOff size={18} />}
+        <span className="ml-1">Onion Skin</span>
       </button>
 
       {/* Clear Frame */}
@@ -252,7 +266,8 @@ function Toolbar() {
         className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-red-500 hover:text-white rounded transition"
         title="Clear Current Frame"
       >
-        🗑️ Clear
+        <Trash2 size={18} />
+        <span className="ml-1">Clear</span>
       </button>
 
       {/* Text Formatting (shown when text tool is active) */}
@@ -290,7 +305,7 @@ function Toolbar() {
         className="px-3 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded transition ml-auto"
         title="Keyboard Shortcuts (H)"
       >
-        ⌨️
+        <Keyboard size={18} />
       </button>
 
       {/* Keyboard Shortcuts Modal */}

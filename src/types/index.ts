@@ -94,6 +94,7 @@ export interface DrawingState {
   fillColor: string
   textSize: number
   textFont: string
+  canvasColor: string
   currentFrameIndex: number
   currentLayerIndex: number
   fps: number

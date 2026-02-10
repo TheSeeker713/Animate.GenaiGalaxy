@@ -59,6 +59,9 @@ interface AnimationStore extends DrawingState {
   setPan: (x: number, y: number) => void
   resetView: () => void
   
+  // Canvas color
+  setCanvasColor: (color: string) => void
+  
   // Color palette
   addColorToPalette: (color: string) => void
   
@@ -96,6 +99,7 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   fillColor: 'transparent',
   textSize: 24,
   textFont: 'Arial',
+  canvasColor: '#FAF9F6',
   currentFrameIndex: 0,
   currentLayerIndex: 0,
   fps: 24,
@@ -470,6 +474,9 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(10, zoom)) }),
   setPan: (x, y) => set({ panX: x, panY: y }),
   resetView: () => set({ zoom: 1, panX: 0, panY: 0 }),
+  
+  // Canvas color
+  setCanvasColor: (color) => set({ canvasColor: color }),
   
   // Color palette
   addColorToPalette: (color) => set((state) => {
