@@ -25,6 +25,8 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: width / 2, y: height / 2 })
   const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map())
+  const [isDraggingHandle, setIsDraggingHandle] = useState(false)
+  const [transformStart, setTransformStart] = useState<{ x: number; y: number; width: number; height: number; rotation: number } | null>(null)
   
   // Handle zoom with mouse wheel
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -151,7 +153,7 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
             scaleY={layer.scale.y}
             rotation={layer.rotation}
             opacity={layer.opacity}
-            draggable={selectedTool === 'select' && isSelected}
+            draggable={selectedTool === 'select' && isSelected && !isDraggingHandle}
             onClick={() => {
               if (selectedTool === 'select') {
                 setSelectedLayer(layer.id)
@@ -161,7 +163,20 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
               if (isSelected) {
                 updateLayerTransform(layer.id, {
                   position: { x: e.target.x(), y: e.target.y() }
-                })Selection border */}
+                })
+              }
+            }}
+          >
+            {hasImage ? (
+              <>
+                <KonvaImage
+                  image={image}
+                  width={imgWidth}
+                  height={imgHeight}
+                  offsetX={imgWidth / 2}
+                  offsetY={imgHeight / 2}
+                />
+                {/* Selection border */}
                 {isSelected && (
                   <Rect
                     width={imgWidth}
@@ -219,6 +234,7 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
                   offsetY={layer.imageData ? 38 : -60}
                   listening={false}
                 />
+                {/* Layer name label */}
                 <Text
                   text={layer.name}
                   fontSize={10}
@@ -228,27 +244,267 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
                   offsetX={50}
                   offsetY={-60}
                   fontStyle={isSelected ? "bold" : "normal"}
-                  listening={falseyer.imageData ? 24 : 12}
-                  fill="white"
-                  align="center"
-                  width={100}
-                  offsetX={50}
-                  offsetY={layer.imageData ? 38 : -60}
-                />
-                <Text
-                  text={layer.name}
-                  fontSize={10}
-                  fill="#9CA3AF"
-                  align="center"
-                  width={100}
-                  offsetX={50}
-                  offsetY={-60}
+                  listening={false}
                 />
               </>
             )}
           </Group>
         )
       })
+  }
+  
+  // Get selected layer bounds for transform handles
+  const getSelectedLayerBounds = () => {
+    if (!selectedLayerId || !currentCharacter) return null
+    
+    const layer = currentCharacter.layers.find((l: CharacterLayer) => l.id === selectedLayerId)
+    if (!layer) return null
+    
+    const image = layer.imageData ? loadedImages.get(layer.imageData) : null
+    const width = image ? image.width : 100
+    const height = image ? image.height : 100
+    
+    return {
+      layer,
+      width,
+      height,
+      x: layer.position.x,
+      y: layer.position.y,
+      scaleX: layer.scale.x,
+      scaleY: layer.scale.y,
+      rotation: layer.rotation
+    }
+  }
+  
+  // Render transform handles for selected layer
+  const renderTransformHandles = () => {
+    if (selectedTool !== 'select' || !selectedLayerId) return null
+    
+    const bounds = getSelectedLayerBounds()
+    if (!bounds) return null
+    
+    const { layer, width, height, x, y, scaleX, scaleY, rotation } = bounds
+    const scaledWidth = width * scaleX
+    const scaledHeight = height * scaleY
+    
+    const handleSize = 12 / scale // Scale handle size inversely to zoom
+    const rotationHandleOffset = 40 / scale
+    
+    // Corner handles for resize
+    const corners = [
+      { x: -scaledWidth / 2, y: -scaledHeight / 2, cursor: 'nwse-resize', type: 'nw' },
+      { x: scaledWidth / 2, y: -scaledHeight / 2, cursor: 'nesw-resize', type: 'ne' },
+      { x: scaledWidth / 2, y: scaledHeight / 2, cursor: 'nwse-resize', type: 'se' },
+      { x: -scaledWidth / 2, y: scaledHeight / 2, cursor: 'nesw-resize', type: 'sw' }
+    ]
+    
+    // Edge handles for resize
+    const edges = [
+      { x: 0, y: -scaledHeight / 2, cursor: 'ns-resize', type: 'n' },
+      { x: scaledWidth / 2, y: 0, cursor: 'ew-resize', type: 'e' },
+      { x: 0, y: scaledHeight / 2, cursor: 'ns-resize', type: 's' },
+      { x: -scaledWidth / 2, y: 0, cursor: 'ew-resize', type: 'w' }
+    ]
+    
+    return (
+      <Group x={x} y={y} rotation={rotation}>
+        {/* Corner resize handles */}
+        {corners.map((corner) => (
+          <Circle
+            key={corner.type}
+            x={corner.x}
+            y={corner.y}
+            radius={handleSize}
+            fill="white"
+            stroke="#3B82F6"
+            strokeWidth={2 / scale}
+            shadowColor="black"
+            shadowBlur={4 / scale}
+            shadowOpacity={0.3}
+            draggable
+            onDragStart={() => {
+              setIsDraggingHandle(true)
+              setTransformStart({
+                x: layer.position.x,
+                y: layer.position.y,
+                width: scaledWidth,
+                height: scaledHeight,
+                rotation: layer.rotation
+              })
+            }}
+            onDragMove={(e) => {
+              const node = e.target
+              const newX = node.x()
+              const newY = node.y()
+              
+              // Calculate new scale based on handle movement
+              let newScaleX = scaleX
+              let newScaleY = scaleY
+              
+              if (corner.type === 'nw') {
+                newScaleX = (scaledWidth - 2 * newX) / width
+                newScaleY = (scaledHeight - 2 * newY) / height
+              } else if (corner.type === 'ne') {
+                newScaleX = (2 * newX) / width
+                newScaleY = (scaledHeight - 2 * newY) / height
+              } else if (corner.type === 'se') {
+                newScaleX = (2 * newX) / width
+                newScaleY = (2 * newY) / height
+              } else if (corner.type === 'sw') {
+                newScaleX = (scaledWidth - 2 * newX) / width
+                newScaleY = (2 * newY) / height
+              }
+              
+              // Maintain minimum scale
+              newScaleX = Math.max(0.1, newScaleX)
+              newScaleY = Math.max(0.1, newScaleY)
+              
+              updateLayerTransform(layer.id, {
+                scale: { x: newScaleX, y: newScaleY }
+              })
+            }}
+            onDragEnd={() => {
+              setIsDraggingHandle(false)
+              setTransformStart(null)
+            }}
+            onMouseEnter={(e) => {
+              const container = e.target.getStage()?.container()
+              if (container) container.style.cursor = corner.cursor
+            }}
+            onMouseLeave={(e) => {
+              const container = e.target.getStage()?.container()
+              if (container) container.style.cursor = 'default'
+            }}
+          />
+        ))}
+        
+        {/* Edge resize handles */}
+        {edges.map((edge) => (
+          <Rect
+            key={edge.type}
+            x={edge.x - handleSize / 2}
+            y={edge.y - handleSize / 2}
+            width={handleSize}
+            height={handleSize}
+            fill="white"
+            stroke="#3B82F6"
+            strokeWidth={2 / scale}
+            shadowColor="black"
+            shadowBlur={4 / scale}
+            shadowOpacity={0.3}
+            draggable
+            onDragStart={() => {
+              setIsDraggingHandle(true)
+              setTransformStart({
+                x: layer.position.x,
+                y: layer.position.y,
+                width: scaledWidth,
+                height: scaledHeight,
+                rotation: layer.rotation
+              })
+            }}
+            onDragMove={(e) => {
+              const node = e.target
+              const newX = node.x() + handleSize / 2
+              const newY = node.y() + handleSize / 2
+              
+              let newScaleX = scaleX
+              let newScaleY = scaleY
+              
+              if (edge.type === 'n') {
+                newScaleY = (scaledHeight - 2 * newY) / height
+              } else if (edge.type === 'e') {
+                newScaleX = (2 * newX) / width
+              } else if (edge.type === 's') {
+                newScaleY = (2 * newY) / height
+              } else if (edge.type === 'w') {
+                newScaleX = (scaledWidth - 2 * newX) / width
+              }
+              
+              newScaleX = Math.max(0.1, newScaleX)
+              newScaleY = Math.max(0.1, newScaleY)
+              
+              updateLayerTransform(layer.id, {
+                scale: { x: newScaleX, y: newScaleY }
+              })
+            }}
+            onDragEnd={() => {
+              setIsDraggingHandle(false)
+              setTransformStart(null)
+            }}
+            onMouseEnter={(e) => {
+              const container = e.target.getStage()?.container()
+              if (container) container.style.cursor = edge.cursor
+            }}
+            onMouseLeave={(e) => {
+              const container = e.target.getStage()?.container()
+              if (container) container.style.cursor = 'default'
+            }}
+          />
+        ))}
+        
+        {/* Rotation handle */}
+        <Group>
+          <Line
+            points={[0, -scaledHeight / 2, 0, -scaledHeight / 2 - rotationHandleOffset]}
+            stroke="#3B82F6"
+            strokeWidth={2 / scale}
+            dash={[5 / scale, 5 / scale]}
+          />
+          <Circle
+            x={0}
+            y={-scaledHeight / 2 - rotationHandleOffset}
+            radius={handleSize}
+            fill="#3B82F6"
+            stroke="white"
+            strokeWidth={2 / scale}
+            shadowColor="black"
+            shadowBlur={4 / scale}
+            shadowOpacity={0.3}
+            draggable
+            onDragStart={() => {
+              setIsDraggingHandle(true)
+              setTransformStart({
+                x: layer.position.x,
+                y: layer.position.y,
+                width: scaledWidth,
+                height: scaledHeight,
+                rotation: layer.rotation
+              })
+            }}
+            onDragMove={(e) => {
+              const node = e.target
+              const stage = node.getStage()
+              if (!stage) return
+              
+              const pointerPos = stage.getPointerPosition()
+              if (!pointerPos) return
+              
+              // Calculate angle from layer center to pointer
+              const dx = pointerPos.x - (x * scale + position.x)
+              const dy = pointerPos.y - (y * scale + position.y)
+              const angle = Math.atan2(dy, dx) * 180 / Math.PI
+              
+              updateLayerTransform(layer.id, {
+                rotation: angle + 90 // Offset by 90 to match visual orientation
+              })
+            }}
+            onDragEnd={() => {
+              setIsDraggingHandle(false)
+              setTransformStart(null)
+            }}
+            onMouseEnter={(e) => {
+              const container = e.target.getStage()?.container()
+              if (container) container.style.cursor = 'grab'
+            }}
+            onMouseLeave={(e) => {
+              const container = e.target.getStage()?.container()
+              if (container) container.style.cursor = 'default'
+            }}
+          />
+        </Group>
+      </Group>
+    )
   }
   
   // Render skeleton bones
@@ -380,6 +636,11 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
         {/* Character Layers */}
         <Layer>
           {renderLayers()}
+        </Layer>
+        
+        {/* Transform Handles Layer */}
+        <Layer>
+          {renderTransformHandles()}
         </Layer>
         
         {/* Skeleton Layer (Overlay) */}

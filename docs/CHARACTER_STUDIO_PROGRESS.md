@@ -103,8 +103,10 @@
 - [x] Add layer visibility toggles (functional) ✅
 - [x] Character name editing ✅
 - [ ] Auto-save on changes (debounced)
-- [ ] Image loading system for layers
-- [ ] Layer selection & highlighting
+- [x] Image loading system for layers ✅
+- [x] Layer selection & highlighting ✅
+- [x] Layer drag to reposition ✅
+- [x] Transform handles (resize/rotate) ✅
 - [ ] Bone dragging (IK manipulation)
 
 ---
@@ -116,17 +118,16 @@
 - [ ] Template quick stats (bone count, layer count)
 - [ ] Featured templates section
 - [ ] Recent templates section
+
+### Canvas Features
 - [x] Konva.js integration ✅
 - [x] Layer rendering with transforms ✅
 - [x] Zoom/pan controls ✅
 - [x] Grid overlay ✅
 - [x] Skeleton visualization ✅
-- [ ] Layer rendering with real images (currently placeholders)
-- [ ] Bone highlight on hover
-- [ ] Layer selection on click
-- [ ] Transform handles (resize/rotate)
-- [ ] Grid overlay
-- [ ] Skeleton visualization
+- [x] Layer selection on click ✅
+- [x] Transform handles (resize/rotate) ✅
+- [ ] Layer rendering with real images (currently using placeholders)
 - [ ] Bone highlight on hover
 
 ---
