@@ -16,6 +16,11 @@ interface CharacterState {
   showGrid: boolean
   selectedLayerId: string | null
   
+  // Auto-save state
+  lastSaved: Date | null
+  isSaving: boolean
+  autoSaveEnabled: boolean
+  
   // Morph panel state
   selectedMorphCategory: 'body' | 'face' | 'style' | null
   
@@ -25,6 +30,7 @@ interface CharacterState {
   loadTemplate: (template: CharacterTemplate) => Promise<void>
   createFromScratch: () => void
   saveCharacter: () => Promise<void>
+  updateCharacter: (character: Character) => void
   updateMorphState: (morphId: string, value: number) => void
   setSelectedTool: (tool: CharacterState['selectedTool']) => void
   toggleSkeleton: () => void
@@ -37,6 +43,18 @@ interface CharacterState {
 
 const generateId = () => `char-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
+// Debounce timer for auto-save
+let autoSaveTimer: NodeJS.Timeout | null = null
+const AUTO_SAVE_DELAY = 2000 // 2 seconds
+
+// Helper function to trigger auto-save with debounce
+function triggerAutoSave(saveFunction: () => Promise<void>) {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer)
+  autoSaveTimer = setTimeout(() => {
+    saveFunction()
+  }, AUTO_SAVE_DELAY)
+}
+
 export const useCharacterStore = create<CharacterState>((set, get) => ({
   currentCharacter: null,
   baseTemplate: null,
@@ -46,6 +64,9 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   showMorphHandles: false,
   selectedLayerId: null,
   showGrid: false,
+  lastSaved: null,
+  isSaving: false,
+  autoSaveEnabled: true,
   selectedMorphCategory: null,
   
   setCurrentCharacter: (character) => set({ currentCharacter: character }),
@@ -151,21 +172,42 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
     const { currentCharacter } = get()
     if (!currentCharacter) return
     
-    // Update modified date
-    const updatedCharacter = {
-      ...currentCharacter,
-      modifiedAt: new Date()
+    set({ isSaving: true })
+    
+    try {
+      // Update modified date
+      const updatedCharacter = {
+        ...currentCharacter,
+        modifiedAt: new Date()
+      }
+      
+      // Save to localStorage (MVP)
+      localStorage.setItem(
+        `character-${currentCharacter.id}`,
+        JSON.stringify(updatedCharacter)
+      )
+      
+      set({ 
+        currentCharacter: updatedCharacter,
+        lastSaved: new Date(),
+        isSaving: false
+      })
+      
+      console.log('Character saved:', updatedCharacter.name)
+    } catch (error) {
+      console.error('Failed to save character:', error)
+      set({ isSaving: false })
     }
+  },
+  
+  updateCharacter: (character) => {
+    const { autoSaveEnabled, saveCharacter } = get()
+    set({ currentCharacter: character })
     
-    // Save to localStorage (MVP)
-    localStorage.setItem(
-      `character-${currentCharacter.id}`,
-      JSON.stringify(updatedCharacter)
-    )
-    
-    set({ currentCharacter: updatedCharacter })
-    
-    console.log('Character saved:', updatedCharacter.name)
+    // Trigger auto-save with debounce
+    if (autoSaveEnabled) {
+      triggerAutoSave(saveCharacter)
+    }
   },
   
   updateMorphState: (morphId, value) => {
@@ -192,7 +234,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   setSelectedLayer: (layerId) => set({ selectedLayerId: layerId }),
   
   updateLayerTransform: (layerId, transform) => {
-    const { currentCharacter } = get()
+    const { currentCharacter, autoSaveEnabled, saveCharacter } = get()
     if (!currentCharacter) return
     
     const updatedCharacter = {
@@ -210,5 +252,10 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
     }
     
     set({ currentCharacter: updatedCharacter })
+    
+    // Trigger auto-save with debounce
+    if (autoSaveEnabled) {
+      triggerAutoSave(saveCharacter)
+    }
   }
 }))

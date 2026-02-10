@@ -14,10 +14,13 @@ export default function CharacterStudio() {
     isLoading,
     loadTemplate,
     saveCharacter,
+    updateCharacter,
     selectedTool,
     showSkeleton,
     showGrid,
     selectedLayerId,
+    lastSaved,
+    isSaving,
     setSelectedTool,
     setSelectedLayer,
     toggleSkeleton,
@@ -106,6 +109,25 @@ export default function CharacterStudio() {
             Character Studio
             {currentCharacter && ` | ${currentCharacter.name}`}
           </h1>
+          {currentCharacter && (
+            <div className="ml-4 flex items-center gap-2 text-sm">
+              {isSaving ? (
+                <span className="text-yellow-400 animate-pulse flex items-center gap-1">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </span>
+              ) : lastSaved ? (
+                <span className="text-green-400 flex items-center gap-1">
+                  ✓ Saved {new Date(lastSaved).toLocaleTimeString()}
+                </span>
+              ) : (
+                <span className="text-gray-400">Not saved</span>
+              )}
+            </div>
+          )}
         </div>
         
         <div className="flex gap-2">
@@ -164,13 +186,12 @@ export default function CharacterStudio() {
                         checked={layer.visible}
                         onChange={(e) => {
                           e.stopPropagation()
-                          const updated = {
+                          updateCharacter({
                             ...currentCharacter,
                             layers: currentCharacter.layers.map((l: CharacterLayer) =>
                               l.id === layer.id ? { ...l, visible: e.target.checked } : l
                             )
-                          }
-                          useCharacterStore.setState({ currentCharacter: updated })
+                          })
                         }}
                         onClick={(e) => e.stopPropagation()}
                         className="w-4 h-4"
@@ -256,8 +277,7 @@ export default function CharacterStudio() {
                     type="text"
                     value={currentCharacter.name}
                     onChange={(e) => {
-                      const updated = { ...currentCharacter, name: e.target.value }
-                      useCharacterStore.setState({ currentCharacter: updated })
+                      updateCharacter({ ...currentCharacter, name: e.target.value })
                     }}
                     className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
                   />
@@ -278,13 +298,12 @@ export default function CharacterStudio() {
                             type="text"
                             value={selectedLayer.name}
                             onChange={(e) => {
-                              const updated = {
+                              updateCharacter({
                                 ...currentCharacter,
                                 layers: currentCharacter.layers.map((l: CharacterLayer) =>
                                   l.id === selectedLayerId ? { ...l, name: e.target.value } : l
                                 )
-                              }
-                              useCharacterStore.setState({ currentCharacter: updated })
+                              })
                             }}
                             className="w-full px-2 py-1 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
                           />
@@ -297,15 +316,14 @@ export default function CharacterStudio() {
                               type="number"
                               value={Math.round(selectedLayer.position.x)}
                               onChange={(e) => {
-                                const updated = {
+                                updateCharacter({
                                   ...currentCharacter,
                                   layers: currentCharacter.layers.map((l: CharacterLayer) =>
                                     l.id === selectedLayerId 
                                       ? { ...l, position: { ...l.position, x: parseFloat(e.target.value) || 0 } } 
                                       : l
                                   )
-                                }
-                                useCharacterStore.setState({ currentCharacter: updated })
+                                })
                               }}
                               className="w-full px-2 py-1 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
                             />
@@ -316,15 +334,14 @@ export default function CharacterStudio() {
                               type="number"
                               value={Math.round(selectedLayer.position.y)}
                               onChange={(e) => {
-                                const updated = {
+                                updateCharacter({
                                   ...currentCharacter,
                                   layers: currentCharacter.layers.map((l: CharacterLayer) =>
                                     l.id === selectedLayerId 
                                       ? { ...l, position: { ...l.position, y: parseFloat(e.target.value) || 0 } } 
                                       : l
                                   )
-                                }
-                                useCharacterStore.setState({ currentCharacter: updated })
+                                })
                               }}
                               className="w-full px-2 py-1 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm"
                             />
@@ -340,13 +357,12 @@ export default function CharacterStudio() {
                             step="0.01"
                             value={selectedLayer.opacity}
                             onChange={(e) => {
-                              const updated = {
+                              updateCharacter({
                                 ...currentCharacter,
                                 layers: currentCharacter.layers.map((l: CharacterLayer) =>
                                   l.id === selectedLayerId ? { ...l, opacity: parseFloat(e.target.value) } : l
                                 )
-                              }
-                              useCharacterStore.setState({ currentCharacter: updated })
+                              })
                             }}
                             className="w-full"
                           />
@@ -361,13 +377,12 @@ export default function CharacterStudio() {
                             step="1"
                             value={selectedLayer.rotation}
                             onChange={(e) => {
-                              const updated = {
+                              updateCharacter({
                                 ...currentCharacter,
                                 layers: currentCharacter.layers.map((l: CharacterLayer) =>
                                   l.id === selectedLayerId ? { ...l, rotation: parseFloat(e.target.value) } : l
                                 )
-                              }
-                              useCharacterStore.setState({ currentCharacter: updated })
+                              })
                             }}
                             className="w-full"
                           />
