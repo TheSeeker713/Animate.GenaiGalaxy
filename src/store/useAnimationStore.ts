@@ -8,6 +8,10 @@ interface AnimationStore extends DrawingState {
   setBrushColor: (color: string) => void
   setFillColor: (color: string) => void
   
+  // Text formatting
+  setTextSize: (size: number) => void
+  setTextFont: (font: string) => void
+  
   // Frame actions
   setCurrentFrame: (index: number) => void
   addFrame: () => void
@@ -90,6 +94,8 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   brushSize: 5,
   brushColor: '#000000',
   fillColor: 'transparent',
+  textSize: 24,
+  textFont: 'Arial',
   currentFrameIndex: 0,
   currentLayerIndex: 0,
   fps: 24,
@@ -116,6 +122,8 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   setBrushSize: (size) => set({ brushSize: size }),
   setBrushColor: (color) => set({ brushColor: color }),
   setFillColor: (color) => set({ fillColor: color }),
+  setTextSize: (size) => set({ textSize: size }),
+  setTextFont: (font) => set({ textFont: font }),
   
   // Frame actions
   setCurrentFrame: (index) => set({ currentFrameIndex: index }),

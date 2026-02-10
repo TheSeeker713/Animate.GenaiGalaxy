@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 import { useAnimationStore } from '../../store/useAnimationStore'
 
-export default function Timeline() {
+function Timeline() {
   const {
     frames,
     currentFrameIndex,
@@ -342,3 +342,5 @@ export default function Timeline() {
     </div>
   )
 }
+
+export default memo(Timeline)

@@ -1,6 +1,6 @@
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision'
 
-export type Tool = 'brush' | 'eraser' | 'select' | 'rectangle' | 'ellipse' | 'line' | 'fill' | 'eyedropper'
+export type Tool = 'brush' | 'eraser' | 'select' | 'rectangle' | 'ellipse' | 'line' | 'fill' | 'eyedropper' | 'text' | 'transform'
 
 export interface LineData {
   tool: 'brush' | 'eraser'
@@ -11,7 +11,7 @@ export interface LineData {
 
 export interface ShapeData {
   id: string
-  type: 'rectangle' | 'ellipse' | 'line'
+  type: 'rectangle' | 'ellipse' | 'line' | 'text'
   x: number
   y: number
   width?: number
@@ -21,6 +21,15 @@ export interface ShapeData {
   color: string
   strokeWidth: number
   fill?: string
+  // Text-specific properties
+  text?: string
+  fontSize?: number
+  fontFamily?: string
+  fontStyle?: 'normal' | 'bold' | 'italic' | 'bold italic'
+  align?: 'left' | 'center' | 'right'
+  rotation?: number
+  scaleX?: number
+  scaleY?: number
 }
 
 export interface Selection {
@@ -29,6 +38,10 @@ export interface Selection {
   width: number
   height: number
   imageData?: string
+  // Transform state
+  rotation?: number
+  scaleX?: number
+  scaleY?: number
 }
 
 export interface Layer {
@@ -79,6 +92,8 @@ export interface DrawingState {
   brushSize: number
   brushColor: string
   fillColor: string
+  textSize: number
+  textFont: string
   currentFrameIndex: number
   currentLayerIndex: number
   fps: number

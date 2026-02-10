@@ -23,6 +23,8 @@ export default function Canvas() {
     brushSize,
     brushColor,
     fillColor,
+    textSize,
+    textFont,
     puppetMode,
     onionSkinEnabled,
     currentFrameIndex,
@@ -297,6 +299,35 @@ const handleMouseDown = () => {
         floodFill(pos.x, pos.y, brushColor)
         setIsDrawing(false) // Fill is instant, no dragging
         return // Early return to skip setIsDrawing(true)
+
+      case 'text':
+        // Prompt for text input and place text at click position
+        const textInput = prompt('Enter text:')
+        if (textInput && textInput.trim()) {
+          const newTextShape: ShapeData = {
+            id: crypto.randomUUID(),
+            type: 'text',
+            x: pos.x,
+            y: pos.y,
+            color: brushColor,
+            strokeWidth: 0,
+            text: textInput.trim(),
+            fontSize: textSize,
+            fontFamily: textFont,
+            fontStyle: 'normal',
+          }
+          setShapes([...shapes, newTextShape])
+        }
+        setIsDrawing(false)
+        return
+
+      case 'transform':
+        // Transform only works if there's a selection
+        if (selection) {
+          // Start transforming - tracking will be handled in mousemove
+          setTempShape({ start: pos })
+        }
+        break
     }
   }
 
@@ -333,6 +364,20 @@ const handleMouseDown = () => {
             width: pos.x - tempSelection.x,
             height: pos.y - tempSelection.y,
           })
+        }
+        break
+
+      case 'transform':
+        // Move selection while dragging
+        if (selection && tempShape) {
+          const dx = pos.x - tempShape.start.x
+          const dy = pos.y - tempShape.start.y
+          setSelection({
+            ...selection,
+            x: selection.x + dx,
+            y: selection.y + dy,
+          })
+          setTempShape({ start: pos }) // Update start position for next move
         }
         break
     }
@@ -398,6 +443,17 @@ const handleMouseDown = () => {
       }
       
       setTempSelection(null)
+    }
+
+    // Finalize transform
+    if (currentTool === 'transform' && tempShape) {
+      setTempShape(null)
+      // Selection position is already updated during mousemove
+      // Just push to history
+      const stage = stageRef.current
+      if (stage) {
+        pushHistory()
+      }
     }
 
     // Save to history
@@ -686,6 +742,23 @@ const handleMouseDown = () => {
                     points={[shape.x, shape.y, shape.x2 || shape.x, shape.y2 || shape.y]}
                     stroke={shape.color}
                     strokeWidth={shape.strokeWidth}
+                  />
+                )
+              } else if (shape.type === 'text') {
+                return (
+                  <Text
+                    key={shape.id}
+                    x={shape.x}
+                    y={shape.y}
+                    text={shape.text || ''}
+                    fontSize={shape.fontSize || 24}
+                    fontFamily={shape.fontFamily || 'Arial'}
+                    fontStyle={shape.fontStyle || 'normal'}
+                    fill={shape.color}
+                    align={shape.align || 'left'}
+                    rotation={shape.rotation || 0}
+                    scaleX={shape.scaleX || 1}
+                    scaleY={shape.scaleY || 1}
                   />
                 )
               }

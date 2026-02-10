@@ -103,6 +103,16 @@ export default function RasterStudio() {
             setTool('eyedropper')
           }
           break
+        case 't':
+          if (!e.ctrlKey && !e.metaKey) {
+            setTool('text')
+          }
+          break
+        case 'v':
+          if (!e.ctrlKey && !e.metaKey) {
+            setTool('transform')
+          }
+          break
         case 'p':
           if (!e.ctrlKey && !e.metaKey) {
             togglePuppetMode()
