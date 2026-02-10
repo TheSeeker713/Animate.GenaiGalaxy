@@ -26,8 +26,7 @@ export default function Dashboard() {
         navigate(`/vector/${project.id}`)
         break
       case 'character':
-        // TODO: navigate(`/character/${project.id}`)
-        alert('Character Studio coming soon!')
+        navigate(`/character/new`)
         break
       case 'story':
         // TODO: navigate(`/story/${project.id}`)
@@ -123,8 +122,8 @@ export default function Dashboard() {
               <p className="text-gray-400 text-sm">
                 Motion capture with face tracking and rigged puppets
               </p>
-              <div className="mt-4 text-xs text-yellow-400">
-                🚧 Coming soon
+              <div className="mt-4 text-xs text-purple-400">
+                ✓ In Development
               </div>
             </button>
 
