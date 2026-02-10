@@ -5,6 +5,7 @@ import TemplateGallery from '@/components/character/TemplateGallery'
 import CharacterCanvas from '@/components/character/CharacterCanvas'
 import MorphPanel from '@/components/character/MorphPanel'
 import ExportModal from '@/components/character/ExportModal'
+import WebcamPanel from '@/components/character/WebcamPanel'
 import type { CharacterTemplate, CharacterLayer } from '@/types/character'
 import Konva from 'konva'
 
@@ -213,9 +214,10 @@ export default function CharacterStudio() {
       
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel - Layers */}
-        <aside className="w-64 bg-gray-800 border-r border-gray-700 overflow-y-auto">
-          <div className="p-4">
+        {/* Left Panel - Layers & Face Tracking */}
+        <aside className="w-80 bg-gray-800 border-r border-gray-700 overflow-y-auto flex flex-col">
+          {/* Layers Section */}
+          <div className="p-4 border-b border-gray-700">
             <h2 className="text-lg font-bold mb-4">Layers</h2>
             
             {!currentCharacter || currentCharacter.layers.length === 0 ? (
@@ -257,6 +259,11 @@ export default function CharacterStudio() {
                 ))}
               </div>
             )}
+          </div>
+          
+          {/* Face Tracking Section */}
+          <div className="flex-1 p-4 overflow-y-auto">
+            <WebcamPanel />
           </div>
         </aside>
         
