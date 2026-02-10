@@ -230,7 +230,7 @@ export default function RasterStudio() {
         <div className="flex-1 flex overflow-hidden">
           {/* Canvas Area */}
           <main className="flex-1 relative overflow-hidden flex items-center justify-center p-6">
-            <div className="relative rounded-2xl overflow-hidden studio-canvas-frame">
+            <div className="relative rounded-2xl overflow-hidden studio-canvas-frame w-full h-full">
               <Canvas />
             </div>
             {puppetMode && <WebcamPuppet />}

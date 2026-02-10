@@ -12,6 +12,7 @@ export default function Canvas() {
   const [shapes, setShapes] = useState<ShapeData[]>([])
   const [isDrawing, setIsDrawing] = useState(false)
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 })
+  const [isCanvasReady, setIsCanvasReady] = useState(false)
   const [onionSkinImage, setOnionSkinImage] = useState<HTMLImageElement | null>(null)
   const [tempShape, setTempShape] = useState<{
     start: { x: number; y: number }
@@ -115,20 +116,45 @@ export default function Canvas() {
   useEffect(() => {
     const updateSize = () => {
       const container = stageRef.current?.container()
-      if (container) {
+      if(container) {
         const parent = container.parentElement
         if (parent) {
-          setStageSize({
-            width: parent.clientWidth,
-            height: parent.clientHeight,
-          })
+          const width = parent.clientWidth
+          const height = parent.clientHeight
+          if (width > 0 && height > 0) {
+            console.log('Canvas resize:', { width, height })
+            setStageSize({ width, height })
+            setIsCanvasReady(true)
+          } else {
+            console.warn('Canvas parent has invalid dimensions:', { width, height })
+          }
+        } else {
+          console.warn('Canvas: no parent element found')
         }
+      } else {
+        console.warn('Canvas: no container found')
       }
     }
 
+    // Initial size with slight delay to ensure DOM is ready
+    const timer = setTimeout(updateSize, 0)
     updateSize()
+    
+    // Use ResizeObserver for better resize detection
+    const container = stageRef.current?.container()
+    let resizeObserver: ResizeObserver | null = null
+    
+    if (container && container.parentElement) {
+      resizeObserver = new ResizeObserver(updateSize)
+      resizeObserver.observe(container.parentElement)
+    }
+    
     window.addEventListener('resize', updateSize)
-    return () => window.removeEventListener('resize', updateSize)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', updateSize)
+      resizeObserver?.disconnect()
+    }
   }, [])
 
   const getPointerPosition = () => {
@@ -249,11 +275,16 @@ export default function Canvas() {
     pushHistory()
   }
 
-const handleMouseDown = () => {
+  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (puppetMode) return
     
     const pos = getPointerPosition()
-    if (!pos) return
+    if (!pos) {
+      console.warn('Canvas: getPointerPosition returned null')
+      return
+    }
+
+    console.log('Canvas mouseDown:', { tool: currentTool, pos })
 
     switch (currentTool) {
       case 'brush':
@@ -341,7 +372,7 @@ const handleMouseDown = () => {
     }
   }
 
-  const handleMouseMove = () => {
+  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     const pos = getPointerPosition()
     if (!pos) return
     
@@ -396,7 +427,7 @@ const handleMouseDown = () => {
     }
   }
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (!isDrawing) return
 
     const pos = getPointerPosition()
@@ -696,6 +727,16 @@ const handleMouseDown = () => {
 
   return (
     <div className="w-full h-full studio-canvas flex items-center justify-center relative">
+      {!isCanvasReady && (
+        <div className="absolute inset-0 flex items-center justify-center z-50 bg-[var(--studio-bg)]/80">
+          <div className="text-center">
+            <div className="text-2xl mb-2">🎨</div>
+            <div className="text-sm text-[var(--studio-text-dim)]">Initializing canvas...</div>
+            <div className="text-xs text-[var(--studio-text-dim)] mt-1">Size: {stageSize.width}×{stageSize.height}</div>
+          </div>
+        </div>
+      )}
+      
       {/* Tool Info Overlay */}
       <div className="absolute top-4 left-4 studio-overlay z-10 text-sm space-y-1">
         <div className="flex items-center gap-2">
