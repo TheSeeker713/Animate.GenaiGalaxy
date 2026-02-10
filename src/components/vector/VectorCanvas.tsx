@@ -11,6 +11,7 @@ export default function VectorCanvas() {
   const [stageSize, setStageSize] = useState({ width: 1000, height: 800 })
   const [isDrawing, setIsDrawing] = useState(false)
   const [tempShape, setTempShape] = useState<{ start: { x: number; y: number } } | null>(null)
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
 
   const {
     currentTool,
@@ -101,6 +102,12 @@ export default function VectorCanvas() {
   }
 
   const handleMouseMove = () => {
+    const pos = getPointerPosition()
+    if (!pos) return
+    
+    // Update cursor position for preview
+    setCursorPos(pos)
+    
     if (!isDrawing || !tempShape) return
     // Shape preview is handled in render
   }
@@ -256,50 +263,113 @@ export default function VectorCanvas() {
       listening: false,
     }
 
+    const dimensionLabel = (
+      <Text
+        x={x + width / 2}
+        y={y - 20 / zoom}
+        text={`${Math.round(width)} × ${Math.round(height)}`}
+        fontSize={12 / zoom}
+        fill="white"
+        stroke="black"
+        strokeWidth={3 / zoom}
+        paintOrder="stroke"
+        listening={false}
+        offsetX={30}
+      />
+    )
+
     switch (currentTool) {
       case 'rectangle':
-        return <Rect x={x} y={y} width={width} height={height} {...shapeProps} />
+        return (
+          <>
+            <Rect x={x} y={y} width={width} height={height} {...shapeProps} />
+            {dimensionLabel}
+          </>
+        )
       case 'ellipse':
         return (
-          <Ellipse
-            x={x + width / 2}
-            y={y + height / 2}
-            radiusX={width / 2}
-            radiusY={height / 2}
-            {...shapeProps}
-          />
+          <>
+            <Ellipse
+              x={x + width / 2}
+              y={y + height / 2}
+              radiusX={width / 2}
+              radiusY={height / 2}
+              {...shapeProps}
+            />
+            {dimensionLabel}
+          </>
         )
       case 'polygon':
         return (
-          <RegularPolygon
-            x={x + width / 2}
-            y={y + height / 2}
-            sides={6}
-            radius={Math.min(width, height) / 2}
-            {...shapeProps}
-          />
+          <>
+            <RegularPolygon
+              x={x + width / 2}
+              y={y + height / 2}
+              sides={6}
+              radius={Math.min(width, height) / 2}
+              {...shapeProps}
+            />
+            <Text
+              x={x + width / 2}
+              y={y - 20 / zoom}
+              text={`Hexagon: ${Math.round(Math.min(width, height))}px`}
+              fontSize={12 / zoom}
+              fill="white"
+              stroke="black"
+              strokeWidth={3 / zoom}
+              paintOrder="stroke"
+              listening={false}
+              offsetX={50}
+            />
+          </>
         )
       case 'star':
         return (
-          <Star
-            x={x + width / 2}
-            y={y + height / 2}
-            numPoints={5}
-            outerRadius={Math.min(width, height) / 2}
-            innerRadius={Math.min(width, height) / 4}
-            {...shapeProps}
-          />
+          <>
+            <Star
+              x={x + width / 2}
+              y={y + height / 2}
+              numPoints={5}
+              outerRadius={Math.min(width, height) / 2}
+              innerRadius={Math.min(width, height) / 4}
+              {...shapeProps}
+            />
+            <Text
+              x={x + width / 2}
+              y={y - 20 / zoom}
+              text={`Star: ${Math.round(Math.min(width, height))}px`}
+              fontSize={12 / zoom}
+              fill="white"
+              stroke="black"
+              strokeWidth={3 / zoom}
+              paintOrder="stroke"
+              listening={false}
+              offsetX={40}
+            />
+          </>
         )
       case 'text':
         return (
-          <Text
-            x={x}
-            y={y}
-            text="Text"
-            fontSize={24}
-            fontFamily="Arial"
-            {...shapeProps}
-          />
+          <>
+            <Text
+              x={x}
+              y={y}
+              text="Text"
+              fontSize={24}
+              fontFamily="Arial"
+              {...shapeProps}
+            />
+            <Rect
+              x={x - 5}
+              y={y - 5}
+              width={width + 10}
+              height={height + 10}
+              stroke={strokeColor}
+              strokeWidth={1 / zoom}
+              dash={[5 / zoom, 5 / zoom]}
+              listening={false}
+            />
+          </>
         )
     }
   }
@@ -384,12 +454,63 @@ export default function VectorCanvas() {
   return (
     <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center relative">
       {/* Tool Info Overlay */}
-      <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-2 rounded shadow-lg z-10 text-sm">
-        <div>Tool: <strong className="capitalize">{currentTool}</strong></div>
-        <div>Zoom: <strong>{Math.round(zoom * 100)}%</strong></div>
-        <div>Layer: <strong>{currentLayerIndex + 1}</strong></div>
+      <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-2 rounded shadow-lg z-10 text-sm space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">Tool:</span>
+          <strong className="capitalize flex items-center gap-1">
+            {currentTool === 'select' && '↖'}
+            {currentTool === 'pen' && '✏️'}
+            {currentTool === 'rectangle' && '▢'}
+            {currentTool === 'ellipse' && '○'}
+            {currentTool === 'polygon' && '⬡'}
+            {currentTool === 'star' && '⭐'}
+            {currentTool === 'text' && '𝐓'}
+            {currentTool}
+          </strong>
+        </div>
+        {currentTool !== 'select' && currentTool !== 'text' && (
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400">Stroke:</span>
+            <strong>{strokeWidth}px</strong>
+            <div 
+              className="w-4 h-4 rounded-full border-2" 
+              style={{ 
+                borderColor: strokeColor,
+                transform: `scale(${Math.min(strokeWidth / 10, 1)})`
+              }}
+            />
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">Stroke:</span>
+          <div 
+            className="w-6 h-4 rounded border border-gray-600" 
+            style={{ backgroundColor: strokeColor }}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">Fill:</span>
+          <div 
+            className="w-6 h-4 rounded border border-gray-600" 
+            style={{ backgroundColor: fillColor }}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">Zoom:</span>
+          <strong>{Math.round(zoom * 100)}%</strong>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">Layer:</span>
+          <strong>{currentLayerIndex + 1}</strong>
+        </div>
         {selectedPathIds.length > 0 && (
-          <div>Selected: <strong>{selectedPathIds.length}</strong></div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400">Selected:</span>
+            <strong>{selectedPathIds.length}</strong>
+          </div>
+        )}
+        {snapToGrid && (
+          <div className="text-green-400 text-xs">📍 Snap to Grid</div>
         )}
       </div>
 
@@ -406,7 +527,7 @@ export default function VectorCanvas() {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onWheel={handleWheel}
-          className="cursor-crosshair"
+          className={currentTool !== 'select' ? 'cursor-none' : 'cursor-default'}
         >
           <Layer ref={layerRef}>
             {/* Grid */}
@@ -417,6 +538,60 @@ export default function VectorCanvas() {
 
             {/* Temp shape preview */}
             {renderTempShape()}
+
+            {/* Cursor preview for drawing tools */}
+            {cursorPos && !isDrawing && currentTool !== 'select' && (
+              <>
+                {/* Stroke width circle indicator */}
+                <Ellipse
+                  x={cursorPos.x}
+                  y={cursorPos.y}
+                  radiusX={strokeWidth / 2}
+                  radiusY={strokeWidth / 2}
+                  stroke={strokeColor}
+                  strokeWidth={1 / zoom}
+                  listening={false}
+                  opacity={0.6}
+                />
+                {/* Center crosshair */}
+                <Line
+                  points={[
+                    cursorPos.x - 8 / zoom,
+                    cursorPos.y,
+                    cursorPos.x + 8 / zoom,
+                    cursorPos.y
+                  ]}
+                  stroke={strokeColor}
+                  strokeWidth={1 / zoom}
+                  listening={false}
+                  opacity={0.8}
+                />
+                <Line
+                  points={[
+                    cursorPos.x,
+                    cursorPos.y - 8 / zoom,
+                    cursorPos.x,
+                    cursorPos.y + 8 / zoom
+                  ]}
+                  stroke={strokeColor}
+                  strokeWidth={1 / zoom}
+                  listening={false}
+                  opacity={0.8}
+                />
+                {/* Snap-to-grid indicator */}
+                {snapToGrid && (
+                  <Rect
+                    x={cursorPos.x - 3 / zoom}
+                    y={cursorPos.y - 3 / zoom}
+                    width={6 / zoom}
+                    height={6 / zoom}
+                    fill={strokeColor}
+                    listening={false}
+                    opacity={0.4}
+                  />
+                )}
+              </>
+            )}
           </Layer>
         </Stage>
       </div>

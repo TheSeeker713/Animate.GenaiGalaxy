@@ -16,6 +16,7 @@ export default function Canvas() {
   const [onionSkinImage, setOnionSkinImage] = useState<HTMLImageElement | null>(null)
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null)
   const [tempShape, setTempShape] = useState<{ start: { x: number; y: number } } | null>(null)
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
 
   const {
     currentTool,
@@ -160,10 +161,13 @@ const handleMouseDown = () => {
   }
 
   const handleMouseMove = () => {
-    if (!isDrawing) return
-
     const pos = getPointerPosition()
     if (!pos) return
+    
+    // Update cursor position for preview
+    setCursorPos(pos)
+    
+    if (!isDrawing) return
 
     switch (currentTool) {
       case 'brush':
@@ -264,42 +268,91 @@ const handleMouseDown = () => {
     if (!pos) return null
 
     const start = tempShape.start
+    const width = Math.abs(pos.x - start.x)
+    const height = Math.abs(pos.y - start.y)
 
     switch (currentTool) {
       case 'rectangle':
         return (
-          <Rect
-            x={Math.min(start.x, pos.x)}
-            y={Math.min(start.y, pos.y)}
-            width={Math.abs(pos.x - start.x)}
-            height={Math.abs(pos.y - start.y)}
-            stroke={brushColor}
-            strokeWidth={brushSize}
-            fill={fillColor !== 'transparent' ? fillColor : undefined}
-            dash={[5, 5]}
-          />
+          <>
+            <Rect
+              x={Math.min(start.x, pos.x)}
+              y={Math.min(start.y, pos.y)}
+              width={width}
+              height={height}
+              stroke={brushColor}
+              strokeWidth={brushSize}
+              fill={fillColor !== 'transparent' ? fillColor : undefined}
+              dash={[5, 5]}
+            />
+            {/* Dimension label */}
+            <Text
+              x={Math.min(start.x, pos.x) + width / 2}
+              y={Math.min(start.y, pos.y) - 20 / zoom}
+              text={`${Math.round(width)} × ${Math.round(height)}`}
+              fontSize={12 / zoom}
+              fill="white"
+              stroke="black"
+              strokeWidth={3 / zoom}
+              paintOrder="stroke"
+              listening={false}
+              offsetX={30}
+            />
+          </>
         )
       case 'ellipse':
         return (
-          <Ellipse
-            x={start.x + (pos.x - start.x) / 2}
-            y={start.y + (pos.y - start.y) / 2}
-            radiusX={Math.abs(pos.x - start.x) / 2}
-            radiusY={Math.abs(pos.y - start.y) / 2}
-            stroke={brushColor}
-            strokeWidth={brushSize}
-            fill={fillColor !== 'transparent' ? fillColor : undefined}
-            dash={[5, 5]}
-          />
+          <>
+            <Ellipse
+              x={start.x + (pos.x - start.x) / 2}
+              y={start.y + (pos.y - start.y) / 2}
+              radiusX={width / 2}
+              radiusY={height / 2}
+              stroke={brushColor}
+              strokeWidth={brushSize}
+              fill={fillColor !== 'transparent' ? fillColor : undefined}
+              dash={[5, 5]}
+            />
+            {/* Dimension label */}
+            <Text
+              x={start.x + (pos.x - start.x) / 2}
+              y={start.y + (pos.y - start.y) / 2 - height / 2 - 20 / zoom}
+              text={`${Math.round(width)} × ${Math.round(height)}`}
+              fontSize={12 / zoom}
+              fill="white"
+              stroke="black"
+              strokeWidth={3 / zoom}
+              paintOrder="stroke"
+              listening={false}
+              offsetX={30}
+            />
+          </>
         )
       case 'line':
+        const length = Math.sqrt(Math.pow(pos.x - start.x, 2) + Math.pow(pos.y - start.y, 2))
+        const angle = Math.atan2(pos.y - start.y, pos.x - start.x) * 180 / Math.PI
         return (
-          <Line
-            points={[start.x, start.y, pos.x, pos.y]}
-            stroke={brushColor}
-            strokeWidth={brushSize}
-            dash={[5, 5]}
-          />
+          <>
+            <Line
+              points={[start.x, start.y, pos.x, pos.y]}
+              stroke={brushColor}
+              strokeWidth={brushSize}
+              dash={[5, 5]}
+            />
+            {/* Length and angle label */}
+            <Text
+              x={(start.x + pos.x) / 2}
+              y={(start.y + pos.y) / 2 - 15 / zoom}
+              text={`${Math.round(length)}px @ ${Math.round(angle)}°`}
+              fontSize={12 / zoom}
+              fill="white"
+              stroke="black"
+              strokeWidth={3 / zoom}
+              paintOrder="stroke"
+              listening={false}
+              offsetX={40}
+            />
+          </>
         )
     }
   }
@@ -307,10 +360,51 @@ const handleMouseDown = () => {
   return (
     <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center relative">
       {/* Tool Info Overlay */}
-      <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-2 rounded shadow-lg z-10 text-sm">
-        <div>Tool: <strong className="capitalize">{currentTool}</strong></div>
-        <div>Zoom: <strong>{Math.round(zoom * 100)}%</strong></div>
-        <div>Layer: <strong>{currentLayerIndex + 1}</strong></div>
+      <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-2 rounded shadow-lg z-10 text-sm space-y-1">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">Tool:</span>
+          <strong className="capitalize flex items-center gap-1">
+            {currentTool === 'brush' && '🖌️'}
+            {currentTool === 'eraser' && '🧹'}
+            {currentTool === 'rectangle' && '▢'}
+            {currentTool === 'ellipse' && '○'}
+            {currentTool === 'line' && '─'}
+            {currentTool === 'select' && '↖'}
+            {currentTool === 'eyedropper' && '💧'}
+            {currentTool === 'fill' && '🪣'}
+            {currentTool}
+          </strong>
+        </div>
+        {(currentTool === 'brush' || currentTool === 'eraser') && (
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400">Size:</span>
+            <strong>{brushSize}px</strong>
+            <div 
+              className="w-4 h-4 rounded-full border-2" 
+              style={{ 
+                borderColor: currentTool === 'eraser' ? '#EF4444' : brushColor,
+                transform: `scale(${Math.min(brushSize / 20, 1)})`
+              }}
+            />
+          </div>
+        )}
+        {currentTool === 'brush' && (
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400">Color:</span>
+            <div 
+              className="w-6 h-4 rounded border border-gray-600" 
+              style={{ backgroundColor: brushColor }}
+            />
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">Zoom:</span>
+          <strong>{Math.round(zoom * 100)}%</strong>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-400">Layer:</span>
+          <strong>{currentLayerIndex + 1}</strong>
+        </div>
       </div>
 
       {/* Puppet mode indicator */}
@@ -349,7 +443,7 @@ const handleMouseDown = () => {
           onTouchEnd={handleMouseUp}
           onWheel={handleWheel}
           draggable={currentTool === 'select'}
-          className="cursor-crosshair"
+          className={currentTool === 'brush' || currentTool === 'eraser' ? 'cursor-none' : 'cursor-crosshair'}
         >
           <Layer ref={layerRef}>
             {/* Onion skin - previous frame */}
@@ -420,6 +514,49 @@ const handleMouseDown = () => {
 
             {/* Temp shape preview */}
             {renderTempShape()}
+
+            {/* Brush cursor preview */}
+            {cursorPos && !isDrawing && (currentTool === 'brush' || currentTool === 'eraser') && (
+              <>
+                {/* Brush size circle */}
+                <Ellipse
+                  x={cursorPos.x}
+                  y={cursorPos.y}
+                  radiusX={brushSize / 2}
+                  radiusY={brushSize / 2}
+                  stroke={currentTool === 'eraser' ? '#EF4444' : brushColor}
+                  strokeWidth={2 / zoom}
+                  dash={currentTool === 'eraser' ? [5 / zoom, 5 / zoom] : undefined}
+                  listening={false}
+                  opacity={0.6}
+                />
+                {/* Center crosshair */}
+                <Line
+                  points={[
+                    cursorPos.x - 10 / zoom,
+                    cursorPos.y,
+                    cursorPos.x + 10 / zoom,
+                    cursorPos.y
+                  ]}
+                  stroke={currentTool === 'eraser' ? '#EF4444' : '#666'}
+                  strokeWidth={1 / zoom}
+                  listening={false}
+                  opacity={0.8}
+                />
+                <Line
+                  points={[
+                    cursorPos.x,
+                    cursorPos.y - 10 / zoom,
+                    cursorPos.x,
+                    cursorPos.y + 10 / zoom
+                  ]}
+                  stroke={currentTool === 'eraser' ? '#EF4444' : '#666'}
+                  strokeWidth={1 / zoom}
+                  listening={false}
+                  opacity={0.8}
+                />
+              </>
+            )}
 
             {/* Selection box */}
             {selection && (
