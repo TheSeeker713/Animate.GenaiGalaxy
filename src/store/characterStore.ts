@@ -15,11 +15,17 @@ interface CharacterState {
   showMorphHandles: boolean
   showGrid: boolean
   selectedLayerId: string | null
+  selectedBoneId: string | null
   
   // Auto-save state
   lastSaved: Date | null
   isSaving: boolean
   autoSaveEnabled: boolean
+  
+  // Undo/Redo state
+  history: Character[]
+  historyIndex: number
+  maxHistory: number
   
   // Morph panel state
   selectedMorphCategory: 'body' | 'face' | 'style' | null
@@ -38,7 +44,13 @@ interface CharacterState {
   toggleGrid: () => void
   setSelectedMorphCategory: (category: CharacterState['selectedMorphCategory']) => void
   setSelectedLayer: (layerId: string | null) => void
+  setSelectedBone: (boneId: string | null) => void
+  updateBonePosition: (boneId: string, position: { x: number; y: number }) => void
   updateLayerTransform: (layerId: string, transform: Partial<{ position: { x: number; y: number }; scale: { x: number; y: number }; rotation: number }>) => void
+  undo: () => void
+  redo: () => void
+  canUndo: () => boolean
+  canRedo: () => boolean
 }
 
 const generateId = () => `char-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -46,6 +58,26 @@ const generateId = () => `char-${Date.now()}-${Math.random().toString(36).substr
 // Debounce timer for auto-save
 let autoSaveTimer: NodeJS.Timeout | null = null
 const AUTO_SAVE_DELAY = 2000 // 2 seconds
+
+// Helper function to add to history
+function addToHistory(character: Character, get: any, set: any) {
+  const { history, historyIndex, maxHistory } = get()
+  
+  // Remove any history after current index (when undoing then making new changes)
+  const newHistory = history.slice(0, historyIndex + 1)
+  
+  // Add current state
+  newHistory.push(JSON.parse(JSON.stringify(character)))
+  
+  // Limit history size
+  if (newHistory.length > maxHistory) {
+    newHistory.shift()
+  } else {
+    set({ historyIndex: historyIndex + 1 })
+  }
+  
+  set({ history: newHistory })
+}
 
 // Helper function to trigger auto-save with debounce
 function triggerAutoSave(saveFunction: () => Promise<void>) {
@@ -63,10 +95,14 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   showSkeleton: true,
   showMorphHandles: false,
   selectedLayerId: null,
+  selectedBoneId: null,
   showGrid: false,
   lastSaved: null,
   isSaving: false,
   autoSaveEnabled: true,
+  history: [],
+  historyIndex: -1,
+  maxHistory: 20,
   selectedMorphCategory: null,
   
   setCurrentCharacter: (character) => set({ currentCharacter: character }),
@@ -202,6 +238,10 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   
   updateCharacter: (character) => {
     const { autoSaveEnabled, saveCharacter } = get()
+    
+    // Add to history
+    addToHistory(character, get, set)
+    
     set({ currentCharacter: character })
     
     // Trigger auto-save with debounce
@@ -211,7 +251,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   },
   
   updateMorphState: (morphId, value) => {
-    const { currentCharacter } = get()
+    const { currentCharacter, autoSaveEnabled, saveCharacter } = get()
     if (!currentCharacter) return
     
     const updatedCharacter = {
@@ -222,7 +262,15 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
       }
     }
     
+    // Add to history
+    addToHistory(updatedCharacter, get, set)
+    
     set({ currentCharacter: updatedCharacter })
+    
+    // Trigger auto-save with debounce
+    if (autoSaveEnabled) {
+      triggerAutoSave(saveCharacter)
+    }
   },
   
   setSelectedTool: (tool) => set({ selectedTool: tool }),
@@ -232,6 +280,35 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   setSelectedMorphCategory: (category) => set({ selectedMorphCategory: category }),
   
   setSelectedLayer: (layerId) => set({ selectedLayerId: layerId }),
+  
+  setSelectedBone: (boneId) => set({ selectedBoneId: boneId }),
+  
+  updateBonePosition: (boneId, position) => {
+    const { currentCharacter, autoSaveEnabled, saveCharacter } = get()
+    if (!currentCharacter) return
+    
+    const updatedCharacter = {
+      ...currentCharacter,
+      skeleton: {
+        ...currentCharacter.skeleton,
+        bones: currentCharacter.skeleton.bones.map(bone =>
+          bone.id === boneId
+            ? { ...bone, position }
+            : bone
+        )
+      }
+    }
+    
+    // Add to history
+    addToHistory(updatedCharacter, get, set)
+    
+    set({ currentCharacter: updatedCharacter })
+    
+    // Trigger auto-save with debounce
+    if (autoSaveEnabled) {
+      triggerAutoSave(saveCharacter)
+    }
+  },
   
   updateLayerTransform: (layerId, transform) => {
     const { currentCharacter, autoSaveEnabled, saveCharacter } = get()
@@ -251,11 +328,46 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
       )
     }
     
+    // Add to history
+    addToHistory(updatedCharacter, get, set)
+    
     set({ currentCharacter: updatedCharacter })
     
     // Trigger auto-save with debounce
     if (autoSaveEnabled) {
       triggerAutoSave(saveCharacter)
     }
+  },
+  
+  undo: () => {
+    const { history, historyIndex } = get()
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1
+      set({ 
+        currentCharacter: JSON.parse(JSON.stringify(history[newIndex])),
+        historyIndex: newIndex
+      })
+    }
+  },
+  
+  redo: () => {
+    const { history, historyIndex } = get()
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1
+      set({ 
+        currentCharacter: JSON.parse(JSON.stringify(history[newIndex])),
+        historyIndex: newIndex
+      })
+    }
+  },
+  
+  canUndo: () => {
+    const { historyIndex } = get()
+    return historyIndex > 0
+  },
+  
+  canRedo: () => {
+    const { history, historyIndex } = get()
+    return historyIndex < history.length - 1
   }
 }))

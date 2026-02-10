@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useCharacterStore } from '@/store/characterStore'
 import TemplateGallery from '@/components/character/TemplateGallery'
 import CharacterCanvas from '@/components/character/CharacterCanvas'
+import MorphPanel from '@/components/character/MorphPanel'
+import ExportModal from '@/components/character/ExportModal'
 import type { CharacterTemplate, CharacterLayer } from '@/types/character'
+import Konva from 'konva'
 
 export default function CharacterStudio() {
   const { characterId } = useParams()
@@ -24,11 +27,18 @@ export default function CharacterStudio() {
     setSelectedTool,
     setSelectedLayer,
     toggleSkeleton,
-    toggleGrid
+    toggleGrid,
+    undo,
+    redo,
+    canUndo,
+    canRedo
   } = useCharacterStore()
   
   const [showTemplateGallery, setShowTemplateGallery] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [rightPanelTab, setRightPanelTab] = useState<'properties' | 'morphs'>('properties')
   const canvasContainerRef = useRef<HTMLDivElement>(null)
+  const canvasStageRef = useRef<Konva.Stage>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
   
   useEffect(() => {
@@ -59,6 +69,36 @@ export default function CharacterStudio() {
     return () => window.removeEventListener('resize', updateCanvasSize)
   }, [])
   
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if target is an input element
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return
+      }
+      
+      if (e.ctrlKey || e.metaKey) {
+        if (e.shiftKey && e.key === 'Z') {
+          // Ctrl+Shift+Z or Cmd+Shift+Z = Redo
+          e.preventDefault()
+          if (canRedo()) redo()
+        } else if (e.key === 'z' || e.key === 'Z') {
+          // Ctrl+Z or Cmd+Z = Undo
+          e.preventDefault()
+          if (canUndo()) undo()
+        } else if (e.key === 'y' || e.key === 'Y') {
+          // Ctrl+Y or Cmd+Y = Redo
+          e.preventDefault()
+          if (canRedo()) redo()
+        }
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [undo, redo, canUndo, canRedo])
+  
   const handleSave = async () => {
     await saveCharacter()
     // Show toast notification
@@ -71,7 +111,7 @@ export default function CharacterStudio() {
   }
   
   const handleExport = () => {
-    console.log('Export not yet implemented')
+    setShowExportModal(true)
   }
   
   const handleTestLive = () => {
@@ -131,6 +171,22 @@ export default function CharacterStudio() {
         </div>
         
         <div className="flex gap-2">
+          <button
+            onClick={() => undo()}
+            className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!canUndo()}
+            title="Undo (Ctrl+Z)"
+          >
+            ↶ Undo
+          </button>
+          <button
+            onClick={() => redo()}
+            className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!canRedo()}
+            title="Redo (Ctrl+Y)"
+          >
+            ↷ Redo
+          </button>
           <button
             onClick={handleSave}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-semibold"
@@ -214,7 +270,7 @@ export default function CharacterStudio() {
               </div>
             </div>
           ) : (
-            <CharacterCanvas width={canvasSize.width} height={canvasSize.height} />
+            <CharacterCanvas ref={canvasStageRef} width={canvasSize.width} height={canvasSize.height} />
           )}
           
           {/* Canvas toolbar */}
@@ -263,25 +319,50 @@ export default function CharacterStudio() {
         </main>
         
         {/* Right Panel - Properties/Morph */}
-        <aside className="w-80 bg-gray-800 border-l border-gray-700 overflow-y-auto">
-          <div className="p-4">
-            <h2 className="text-lg font-bold mb-4">Properties</h2>
-            
-            {!currentCharacter ? (
-              <p className="text-gray-400 text-sm">No character loaded</p>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Character Name</label>
-                  <input
-                    type="text"
-                    value={currentCharacter.name}
-                    onChange={(e) => {
-                      updateCharacter({ ...currentCharacter, name: e.target.value })
-                    }}
-                    className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
+        <aside className="w-80 bg-gray-800 border-l border-gray-700 overflow-y-auto flex flex-col">
+          {/* Tab Header */}
+          <div className="flex border-b border-gray-700">
+            <button
+              onClick={() => setRightPanelTab('properties')}
+              className={`flex-1 px-4 py-3 text-sm font-semibold transition ${
+                rightPanelTab === 'properties'
+                  ? 'bg-gray-900 text-blue-400 border-b-2 border-blue-500'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-750'
+              }`}
+            >
+              Properties
+            </button>
+            <button
+              onClick={() => setRightPanelTab('morphs')}
+              className={`flex-1 px-4 py-3 text-sm font-semibold transition ${
+                rightPanelTab === 'morphs'
+                  ? 'bg-gray-900 text-blue-400 border-b-2 border-blue-500'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-750'
+              }`}
+            >
+              Morphs
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          <div className="flex-1 overflow-y-auto">
+            {rightPanelTab === 'properties' ? (
+              <div className="p-4">
+                {!currentCharacter ? (
+                  <p className="text-gray-400 text-sm">No character loaded</p>
+                ) : (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Character Name</label>
+                      <input
+                        type="text"
+                        value={currentCharacter.name}
+                        onChange={(e) => {
+                          updateCharacter({ ...currentCharacter, name: e.target.value })
+                        }}
+                        className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
                 
                 {selectedLayerId && (() => {
                   const selectedLayer = currentCharacter.layers.find(l => l.id === selectedLayerId)
@@ -399,23 +480,20 @@ export default function CharacterStudio() {
                   )
                 })()}
                 
-                <div>
-                  <label className="block text-sm font-medium mb-1">Template</label>
-                  <input
-                    type="text"
-                    value={baseTemplate?.name || 'None'}
-                    readOnly
-                    className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 text-gray-400"
-                  />
-                </div>
-                
-                <div className="pt-4 border-t border-gray-700">
-                  <h3 className="font-bold mb-2">Morphs</h3>
-                  <p className="text-sm text-gray-400">
-                    Morph controls will appear here
-                  </p>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Template</label>
+                      <input
+                        type="text"
+                        value={baseTemplate?.name || 'None'}
+                        readOnly
+                        className="w-full px-3 py-2 bg-gray-700 rounded border border-gray-600 text-gray-400"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
+            ) : (
+              <MorphPanel />
             )}
           </div>
         </aside>
@@ -426,6 +504,14 @@ export default function CharacterStudio() {
         <TemplateGallery
           onSelect={handleTemplateSelect}
           onClose={() => setShowTemplateGallery(false)}
+        />
+      )}
+      {/* Export Modal */}
+      {showExportModal && currentCharacter && (
+        <ExportModal
+          character={currentCharacter}
+          stageRef={canvasStageRef}
+          onClose={() => setShowExportModal(false)}
         />
       )}
     </div>

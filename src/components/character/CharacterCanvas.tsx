@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Stage, Layer, Circle, Line, Group, Text, Rect, Image as KonvaImage } from 'react-konva'
 import { useCharacterStore } from '@/store/characterStore'
 import type { CharacterLayer, Bone } from '@/types/character'
@@ -10,23 +10,31 @@ interface CharacterCanvasProps {
   height: number
 }
 
-export default function CharacterCanvas({ width, height }: CharacterCanvasProps) {
+const CharacterCanvas = forwardRef<Konva.Stage, CharacterCanvasProps>(({ width, height }, ref) => {
   const {
     currentCharacter,
     showSkeleton,
     showGrid,
     selectedTool,
     selectedLayerId,
+    selectedBoneId,
     setSelectedLayer,
-    updateLayerTransform
+    setSelectedBone,
+    updateLayerTransform,
+    updateBonePosition
   } = useCharacterStore()
   
   const stageRef = useRef<Konva.Stage>(null)
+  
+  // Forward ref to parent
+  useImperativeHandle(ref, () => stageRef.current as Konva.Stage)
+  
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: width / 2, y: height / 2 })
   const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map())
   const [isDraggingHandle, setIsDraggingHandle] = useState(false)
   const [transformStart, setTransformStart] = useState<{ x: number; y: number; width: number; height: number; rotation: number } | null>(null)
+  const [hoveredBoneId, setHoveredBoneId] = useState<string | null>(null)
   
   // Handle zoom with mouse wheel
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -512,12 +520,15 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
     if (!showSkeleton || !currentCharacter) return null
     
     const bones = currentCharacter.skeleton.bones
+    const isBoneTool = selectedTool === 'bone'
     
     return (
       <Group>
         {bones.map((bone: Bone) => {
           // Find parent bone for connection line
           const parent = bones.find((b: Bone) => b.id === bone.parentId)
+          const isSelected = bone.id === selectedBoneId
+          const isHovered = bone.id === hoveredBoneId
           
           return (
             <Group key={bone.id}>
@@ -530,10 +541,11 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
                     bone.position.x,
                     bone.position.y
                   ]}
-                  stroke="#60A5FA"
-                  strokeWidth={3}
+                  stroke={isSelected ? "#3B82F6" : "#60A5FA"}
+                  strokeWidth={isSelected ? 4 : 3}
                   lineCap="round"
-                  opacity={0.7}
+                  opacity={isSelected ? 1 : 0.7}
+                  listening={false}
                 />
               )}
               
@@ -541,14 +553,41 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
               <Circle
                 x={bone.position.x}
                 y={bone.position.y}
-                radius={8}
-                fill="#3B82F6"
-                stroke="#1E40AF"
-                strokeWidth={2}
+                radius={isHovered || isSelected ? 10 : 8}
+                fill={isSelected ? "#60A5FA" : isHovered ? "#93C5FD" : "#3B82F6"}
+                stroke={isSelected ? "#1E3A8A" : "#1E40AF"}
+                strokeWidth={isSelected ? 3 : 2}
                 shadowColor="black"
-                shadowBlur={5}
+                shadowBlur={isHovered || isSelected ? 8 : 5}
                 shadowOffset={{ x: 2, y: 2 }}
                 shadowOpacity={0.3}
+                draggable={isBoneTool}
+                onClick={() => {
+                  if (isBoneTool) {
+                    setSelectedBone(bone.id)
+                  }
+                }}
+                onDragMove={(e) => {
+                  if (isBoneTool) {
+                    const node = e.target
+                    updateBonePosition(bone.id, {
+                      x: node.x(),
+                      y: node.y()
+                    })
+                  }
+                }}
+                onMouseEnter={(e) => {
+                  if (isBoneTool) {
+                    setHoveredBoneId(bone.id)
+                    const container = e.target.getStage()?.container()
+                    if (container) container.style.cursor = 'grab'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  setHoveredBoneId(null)
+                  const container = e.target.getStage()?.container()
+                  if (container) container.style.cursor = 'default'
+                }}
               />
               
               {/* Bone name label */}
@@ -556,9 +595,10 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
                 x={bone.position.x + 12}
                 y={bone.position.y - 8}
                 text={bone.name}
-                fontSize={10}
-                fill="#93C5FD"
-                fontStyle="bold"
+                fontSize={isSelected ? 11 : 10}
+                fill={isSelected ? "#60A5FA" : "#93C5FD"}
+                fontStyle={isSelected ? "bold" : "normal"}
+                listening={false}
               />
             </Group>
           )
@@ -675,4 +715,8 @@ export default function CharacterCanvas({ width, height }: CharacterCanvasProps)
       </div>
     </div>
   )
-}
+})
+
+CharacterCanvas.displayName = 'CharacterCanvas'
+
+export default CharacterCanvas
