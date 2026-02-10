@@ -6,7 +6,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Application } from 'pixi.js'
 import type { Character } from '@/types/character'
-import { characterToSpineJSON } from '@/utils/spineExporter'
 
 interface PlaybackCanvasProps {
   character: Character
@@ -59,9 +58,8 @@ export default function PlaybackCanvas({
 
         appRef.current = app
 
-        // Convert character to Spine JSON
-        const spineData = characterToSpineJSON(character)
-        console.log('Spine JSON:', spineData)
+        // Convert character to Spine JSON (will be used when loading real Spine assets)
+        // const spineData = characterToSpineJSON(character)
 
         // For now, show a placeholder since we need actual Spine asset loading
         // In production, this would load the actual Spine atlas and skeleton

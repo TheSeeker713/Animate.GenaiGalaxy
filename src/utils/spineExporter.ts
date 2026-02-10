@@ -79,7 +79,6 @@ export interface SpineAttachment {
 export function characterToSpineJSON(character: Character): SpineJSON {
   const skeleton = character.skeleton
   const layers = character.layers
-  const morphState = character.morphState
 
   // Build bones array (hierarchical)
   const spineBones: SpineBone[] = []
@@ -99,7 +98,7 @@ export function characterToSpineJSON(character: Character): SpineJSON {
     bone: skeleton.rootBoneId || 'root',
     attachment: layer.name || `layer_${index}`,
     color: 'ffffffff',
-    blend: layer.blendMode === 'multiply' ? 'multiply' : 'normal'
+    blend: 'normal'
   }))
 
   // Build skins (attachments for each slot)
@@ -120,8 +119,8 @@ export function characterToSpineJSON(character: Character): SpineJSON {
       spine: '4.0.64',
       x: 0,
       y: 0,
-      width: character.bounds?.width || 512,
-      height: character.bounds?.height || 512,
+      width: 512,
+      height: 512,
       images: './images/',
       audio: ''
     },
@@ -175,13 +174,13 @@ function createLayerAttachment(layer: CharacterLayer): SpineAttachment {
     type: 'region',
     name: layer.name || layer.id,
     path: layer.name || layer.id,
-    x: layer.transform?.x || 0,
-    y: layer.transform?.y || 0,
-    scaleX: layer.transform?.scaleX || 1,
-    scaleY: layer.transform?.scaleY || 1,
-    rotation: layer.transform?.rotation || 0,
-    width: layer.bounds?.width || 256,
-    height: layer.bounds?.height || 256,
+    x: layer.position.x,
+    y: layer.position.y,
+    scaleX: layer.scale.x,
+    scaleY: layer.scale.y,
+    rotation: layer.rotation,
+    width: 256,
+    height: 256,
     color: 'ffffffff'
   }
 }
@@ -226,16 +225,17 @@ export function generateSpineAtlas(layers: CharacterLayer[]): string {
   
   layers.forEach(layer => {
     const name = layer.name || layer.id
+    const size = 256 // Default layer size
     atlas += `${name}.png\n`
-    atlas += `  size: ${layer.bounds?.width || 512}, ${layer.bounds?.height || 512}\n`
+    atlas += `  size: ${size}, ${size}\n`
     atlas += `  format: RGBA8888\n`
     atlas += `  filter: Linear, Linear\n`
     atlas += `  repeat: none\n`
     atlas += `  ${name}\n`
     atlas += `    rotate: false\n`
     atlas += `    xy: 0, 0\n`
-    atlas += `    size: ${layer.bounds?.width || 512}, ${layer.bounds?.height || 512}\n`
-    atlas += `    orig: ${layer.bounds?.width || 512}, ${layer.bounds?.height || 512}\n`
+    atlas += `    size: ${size}, ${size}\n`
+    atlas += `    orig: ${size}, ${size}\n`
     atlas += `    offset: 0, 0\n`
     atlas += `    index: -1\n\n`
   })

@@ -122,7 +122,6 @@ export default function Canvas() {
           const width = parent.clientWidth
           const height = parent.clientHeight
           if (width > 0 && height > 0) {
-            console.log('Canvas resize:', { width, height })
             setStageSize({ width, height })
             setIsCanvasReady(true)
           } else {
@@ -283,8 +282,6 @@ export default function Canvas() {
       console.warn('Canvas: getPointerPosition returned null')
       return
     }
-
-    console.log('Canvas mouseDown:', { tool: currentTool, pos })
 
     switch (currentTool) {
       case 'brush':

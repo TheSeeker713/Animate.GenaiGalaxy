@@ -105,8 +105,6 @@ export default function CharacterStudio() {
   
   const handleSave = async () => {
     await saveCharacter()
-    // Show toast notification
-    console.log('Character saved!')
   }
   
   const handleTemplateSelect = async (template: CharacterTemplate) => {
@@ -119,7 +117,8 @@ export default function CharacterStudio() {
   }
   
   const handleTestLive = () => {
-    console.log('Test live not yet implemented')
+    // TODO: Implement test live mode
+    alert('Test Live feature coming soon!')
   }
   
   if (!currentCharacter && !showTemplateGallery) {
