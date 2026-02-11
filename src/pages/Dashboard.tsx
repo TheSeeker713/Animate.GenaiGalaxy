@@ -28,7 +28,7 @@ export default function Dashboard() {
         navigate('/character/new')
         break
       case 'story':
-        alert('Story Builder coming soon!')
+        navigate('/story/new')
         break
     }
   }
