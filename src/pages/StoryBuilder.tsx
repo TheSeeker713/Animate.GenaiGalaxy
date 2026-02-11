@@ -5,15 +5,18 @@ import { useStoryStore } from '../store/storyStore'
 import StoryCanvas from '../components/story/StoryCanvas'
 import NodePalette from '../components/story/NodePalette'
 import NodeInspector from '../components/story/NodeInspector'
+import StoryPreview from '../components/story/StoryPreview'
 
 export default function StoryBuilder() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const {
     currentStory,
+    previewMode,
     newStory,
     loadStory,
     saveStory,
+    startPreview,
     undo,
     redo,
     canUndo,
@@ -136,7 +139,7 @@ export default function StoryBuilder() {
           </button>
           
           <button
-            onClick={() => alert('Preview mode coming in Phase 3!')}
+            onClick={() => startPreview()}
             className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors text-sm font-medium"
           >
             ▶️ Preview
@@ -166,6 +169,9 @@ export default function StoryBuilder() {
         {/* Node Inspector (Right Sidebar) */}
         <NodeInspector />
       </div>
+
+      {/* Story Preview Overlay */}
+      {previewMode && <StoryPreview />}
     </div>
   )
 }
