@@ -23,6 +23,7 @@ export default function Canvas() {
   const [selectionImage, setSelectionImage] = useState<HTMLImageElement | null>(null)
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
   const [shiftHeld, setShiftHeld] = useState(false)
+  const [layerImages, setLayerImages] = useState<Record<string, HTMLImageElement>>({})
   const hasAutoFitRef = useRef(false)
 
   // Track Shift key for snapping
@@ -73,6 +74,33 @@ export default function Canvas() {
       setShapes(frameShapes)
     }
   }, [currentFrameIndex, currentLayerIndex, currentLayer])
+
+  // Load layer imageData as HTMLImageElements for rendering
+  useEffect(() => {
+    if (!currentFrame) return
+    const newImages: Record<string, HTMLImageElement> = {}
+    let pending = 0
+    let cancelled = false
+    currentFrame.layers.forEach((layer) => {
+      if (layer.imageData) {
+        pending++
+        const img = new window.Image()
+        img.onload = () => {
+          if (cancelled) return
+          newImages[layer.id] = img
+          pending--
+          if (pending === 0) setLayerImages({ ...newImages })
+        }
+        img.onerror = () => {
+          pending--
+          if (pending === 0 && !cancelled) setLayerImages({ ...newImages })
+        }
+        img.src = layer.imageData
+      }
+    })
+    if (pending === 0) setLayerImages({})
+    return () => { cancelled = true }
+  }, [currentFrame])
 
   // Save frame drawing before switching frames or when drawing changes
   useEffect(() => {
@@ -189,96 +217,121 @@ export default function Canvas() {
       : null
   }
 
-  // Flood fill helper
-  const floodFill = (x: number, y: number, fillColor: string) => {
-    const stage = stageRef.current
-    if (!stage) return
-
-    // Get canvas pixel data
-    const canvas = stage.toCanvas()
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const pixels = imageData.data
-    const width = canvas.width
-    const height = canvas.height
-
-    // Convert fill color to RGB
-    const fillRgb = hexToRgb(fillColor)
+  // Flood fill helper — operates on an offscreen canvas at document dimensions
+  const floodFill = (docX: number, docY: number, color: string) => {
+    const fillRgb = hexToRgb(color)
     if (!fillRgb) return
 
-    // Get target color at click position (adjust for zoom)
-    const canvasX = Math.floor(x * zoom)
-    const canvasY = Math.floor(y * zoom)
-    
-    // Bounds check
-    if (canvasX < 0 || canvasX >= width || canvasY < 0 || canvasY >= height) {
-      console.warn('Fill position out of bounds')
-      return
-    }
-    
-    const startPos = (canvasY * width + canvasX) * 4
-    const targetR = pixels[startPos]
-    const targetG = pixels[startPos + 1]
-    const targetB = pixels[startPos + 2]
-    const targetA = pixels[startPos + 3]
+    const w = documentWidth
+    const h = documentHeight
+    if (w <= 0 || h <= 0) return
 
-    // If clicking on same color, don't fill
-    if (
-      targetR === fillRgb.r &&
-      targetG === fillRgb.g &&
-      targetB === fillRgb.b &&
-      targetA === 255
-    ) {
-      return
+    // Create an offscreen canvas at document dimensions
+    const offscreen = document.createElement('canvas')
+    offscreen.width = w
+    offscreen.height = h
+    const ctx = offscreen.getContext('2d')!
+
+    // If the layer already has raster data, draw it first
+    const drawExisting = (): Promise<void> => {
+      const existingData = currentLayer?.imageData
+      if (!existingData) return Promise.resolve()
+      return new Promise((resolve) => {
+        const img = new window.Image()
+        img.onload = () => { ctx.drawImage(img, 0, 0, w, h); resolve() }
+        img.onerror = () => resolve()
+        img.src = existingData
+      })
     }
 
-    // Stack-based flood fill
-    const stack: [number, number][] = [[canvasX, canvasY]]
-    const filled = new Set<string>()
+    drawExisting().then(() => {
+      // Also render vector lines/shapes onto the offscreen canvas for accurate target-color sampling
+      const tempStage = new Konva.Stage({ container: document.createElement('div'), width: w, height: h })
+      const tempLayer = new Konva.Layer()
+      tempStage.add(tempLayer)
+      // Draw current layer lines
+      lines.forEach(line => {
+        const kLine = new Konva.Line({
+          points: line.points,
+          stroke: line.color,
+          strokeWidth: line.size,
+          tension: 0.5,
+          lineCap: 'round',
+          lineJoin: 'round',
+          globalCompositeOperation: line.tool === 'eraser' ? 'destination-out' : 'source-over',
+        })
+        tempLayer.add(kLine)
+      })
+      tempLayer.draw()
+      const vecCanvas = tempStage.toCanvas({ pixelRatio: 1 })
+      ctx.drawImage(vecCanvas, 0, 0)
+      tempStage.destroy()
 
-    while (stack.length > 0) {
-      const [px, py] = stack.pop()!
-      
-      if (px < 0 || px >= width || py < 0 || py >= height) continue
-      
-      const key = `${px},${py}`
-      if (filled.has(key)) continue
-      filled.add(key)
+      // Now do the flood fill on the offscreen canvas
+      const imageData = ctx.getImageData(0, 0, w, h)
+      const pixels = imageData.data
+      const px0 = Math.floor(docX)
+      const py0 = Math.floor(docY)
+      if (px0 < 0 || px0 >= w || py0 < 0 || py0 >= h) return
 
-      const pos = (py * width + px) * 4
-      const r = pixels[pos]
-      const g = pixels[pos + 1]
-      const b = pixels[pos + 2]
-      const a = pixels[pos + 3]
+      const startIdx = (py0 * w + px0) * 4
+      const tR = pixels[startIdx], tG = pixels[startIdx + 1], tB = pixels[startIdx + 2], tA = pixels[startIdx + 3]
 
-      // Check if pixel matches target color
-      if (r === targetR && g === targetG && b === targetB && a === targetA) {
-        // Fill this pixel
-        pixels[pos] = fillRgb.r
-        pixels[pos + 1] = fillRgb.g
-        pixels[pos + 2] = fillRgb.b
-        pixels[pos + 3] = 255
+      // Same-color check
+      if (tR === fillRgb.r && tG === fillRgb.g && tB === fillRgb.b && tA === 255) return
 
-        // Add neighbors to stack
-        stack.push([px + 1, py])
-        stack.push([px - 1, py])
-        stack.push([px, py + 1])
-        stack.push([px, py - 1])
+      const match = (i: number) =>
+        pixels[i] === tR && pixels[i + 1] === tG && pixels[i + 2] === tB && pixels[i + 3] === tA
+
+      // Scanline fill — much faster than per-pixel stack
+      const stack: [number, number][] = [[px0, py0]]
+      const visited = new Uint8Array(w * h)
+
+      while (stack.length > 0) {
+        // eslint-disable-next-line prefer-const
+        let [sx, sy] = stack.pop()!
+        if (sy < 0 || sy >= h) continue
+
+        // Walk left
+        let left = sx
+        while (left > 0 && match(((sy) * w + (left - 1)) * 4)) left--
+        // Walk right
+        let right = sx
+        while (right < w - 1 && match(((sy) * w + (right + 1)) * 4)) right++
+
+        // Fill the span and check rows above/below
+        let prevAbove = false, prevBelow = false
+        for (let cx = left; cx <= right; cx++) {
+          const idx = (sy * w + cx) * 4
+          if (!match(idx) && visited[sy * w + cx]) continue
+          pixels[idx] = fillRgb.r
+          pixels[idx + 1] = fillRgb.g
+          pixels[idx + 2] = fillRgb.b
+          pixels[idx + 3] = 255
+          visited[sy * w + cx] = 1
+
+          // Check above
+          if (sy > 0) {
+            const aboveIdx = ((sy - 1) * w + cx) * 4
+            const aboveMatch = match(aboveIdx) && !visited[(sy - 1) * w + cx]
+            if (aboveMatch && !prevAbove) stack.push([cx, sy - 1])
+            prevAbove = aboveMatch
+          }
+          // Check below
+          if (sy < h - 1) {
+            const belowIdx = ((sy + 1) * w + cx) * 4
+            const belowMatch = match(belowIdx) && !visited[(sy + 1) * w + cx]
+            if (belowMatch && !prevBelow) stack.push([cx, sy + 1])
+            prevBelow = belowMatch
+          }
+        }
       }
 
-      // Limit iterations to prevent freeze (about 50K pixels)
-      if (filled.size > 50000) break
-    }
-
-    // Put modified image data back
-    ctx.putImageData(imageData, 0, 0)
-    
-    // Convert canvas to dataURL and save
-    const dataUrl = canvas.toDataURL()
-    saveFrameDrawing(currentFrameIndex, currentLayerIndex, lines, shapes, dataUrl)
-    pushHistory()
+      ctx.putImageData(imageData, 0, 0)
+      const dataUrl = offscreen.toDataURL()
+      saveFrameDrawing(currentFrameIndex, currentLayerIndex, lines, shapes, dataUrl)
+      pushHistory()
+    })
   }
 
   const handleMouseDown = (_e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -830,12 +883,25 @@ export default function Canvas() {
       const layerLines = layerIndex === currentLayerIndex ? lines : (layer.lines || [])
       const layerShapes = layerIndex === currentLayerIndex ? shapes : (layer.shapes || [])
 
+      const layerImg = layerImages[layer.id] || null
+
       return (
         <Group
           key={layer.id}
           opacity={layer.opacity}
           globalCompositeOperation={resolveLayerComposite(layer.blendMode)}
         >
+          {/* Render rasterised content (from fill, imports, etc.) */}
+          {layerImg && (
+            <Image
+              image={layerImg}
+              x={0}
+              y={0}
+              width={documentWidth}
+              height={documentHeight}
+              listening={false}
+            />
+          )}
           {renderLayerLines(layerLines)}
           {renderLayerShapes(layerShapes)}
         </Group>
