@@ -8,28 +8,26 @@ export default function Dashboard() {
   const recentProjects = projects.slice(0, 8)
 
   const handleCreateProject = (type: 'raster' | 'vector' | 'character' | 'story') => {
-    const project = createProject({
-      name: `New ${type} Project`,
-      type,
-      thumbnail: '',
-      width: 1920,
-      height: 1080,
-      fps: type === 'raster' || type === 'vector' ? 24 : undefined,
-    })
-
-    // Navigate to appropriate studio
+    // Navigate to appropriate studio/onboarding
     switch (type) {
       case 'raster':
-        navigate(`/raster/${project.id}`)
+        navigate('/raster')
         break
       case 'vector':
+        const project = createProject({
+          name: `New ${type} Project`,
+          type,
+          thumbnail: '',
+          width: 1920,
+          height: 1080,
+          fps: 24,
+        })
         navigate(`/vector/${project.id}`)
         break
       case 'character':
-        navigate(`/character/new`)
+        navigate('/character/new')
         break
       case 'story':
-        // TODO: navigate(`/story/${project.id}`)
         alert('Story Builder coming soon!')
         break
     }
@@ -54,22 +52,22 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white">
+    <div className="min-h-screen bg-slate-950 text-white">
       {/* Header */}
-      <header className="border-b border-gray-700 bg-gray-900/50 backdrop-blur-sm">
+      <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm">
         <div className="container mx-auto px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
                 GenAI Galaxy Animate
               </h1>
-              <p className="text-gray-400 text-sm mt-1">Multi-Tool Creation Suite</p>
+              <p className="text-slate-400 text-sm mt-1">Multi-Tool Creation Suite</p>
             </div>
             <div className="flex items-center gap-4">
-              <button className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded transition">
+              <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded transition">
                 ⚙️ Settings
               </button>
-              <button className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded transition">
+              <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded transition">
                 ❓ Help
               </button>
             </div>
@@ -85,14 +83,14 @@ export default function Dashboard() {
             {/* Raster Animation Card */}
             <button
               onClick={() => handleCreateProject('raster')}
-              className="group p-6 bg-gradient-to-br from-blue-600/20 to-blue-800/20 border-2 border-blue-500/30 rounded-xl hover:border-blue-400 hover:shadow-lg hover:shadow-blue-500/20 transition-all"
+              className="group p-6 bg-gradient-to-br from-cyan-600/20 to-cyan-800/20 border-2 border-cyan-500/30 rounded-xl hover:border-cyan-400 hover:shadow-lg hover:shadow-cyan-500/20 transition-all"
             >
               <div className="text-5xl mb-4">🎨</div>
               <h3 className="text-xl font-bold mb-2">Raster Animation</h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-slate-400 text-sm">
                 Frame-by-frame bitmap animation with Photoshop-level tools
               </p>
-              <div className="mt-4 text-xs text-gray-500">
+              <div className="mt-4 text-xs text-slate-500">
                 ✓ Available now
               </div>
             </button>
@@ -104,7 +102,7 @@ export default function Dashboard() {
             >
               <div className="text-5xl mb-4">✨</div>
               <h3 className="text-xl font-bold mb-2">Vector Animation</h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-slate-400 text-sm">
                 Scalable graphics with motion tweening and smooth transitions
               </p>
               <div className="mt-4 text-xs text-green-400">
@@ -119,7 +117,7 @@ export default function Dashboard() {
             >
               <div className="text-5xl mb-4">🎭</div>
               <h3 className="text-xl font-bold mb-2">Character Studio</h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-slate-400 text-sm">
                 Motion capture with face tracking and rigged puppets
               </p>
               <div className="mt-4 text-xs text-purple-400">
@@ -134,7 +132,7 @@ export default function Dashboard() {
             >
               <div className="text-5xl mb-4">📖</div>
               <h3 className="text-xl font-bold mb-2">Story Builder</h3>
-              <p className="text-gray-400 text-sm">
+              <p className="text-slate-400 text-sm">
                 Interactive narrative designer with branching stories
               </p>
               <div className="mt-4 text-xs text-yellow-400">
@@ -149,24 +147,24 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">Recent Projects</h2>
             {projects.length > 8 && (
-              <button className="text-purple-400 hover:text-purple-300 text-sm">
+              <button className="text-cyan-400 hover:text-cyan-300 text-sm">
                 View all →
               </button>
             )}
           </div>
 
           {recentProjects.length === 0 ? (
-            <div className="text-center py-16 bg-gray-800/30 rounded-xl border border-gray-700">
+            <div className="text-center py-16 bg-slate-800/30 rounded-xl border border-slate-700">
               <div className="text-6xl mb-4">🎬</div>
               <h3 className="text-xl font-bold mb-2">No projects yet</h3>
-              <p className="text-gray-400">Create your first project to get started!</p>
+              <p className="text-slate-400">Create your first project to get started!</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {recentProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="group bg-gray-800/50 rounded-lg border border-gray-700 hover:border-purple-500 transition-all overflow-hidden"
+                  className="group bg-slate-800/50 rounded-lg border border-slate-700 hover:border-cyan-500 transition-all overflow-hidden"
                 >
                   <button
                     onClick={() => handleOpenProject(project.id, project.type)}
@@ -186,7 +184,7 @@ export default function Dashboard() {
                     </div>
                     <div className="p-4">
                       <h3 className="font-bold text-sm mb-1 truncate">{project.name}</h3>
-                      <div className="flex items-center justify-between text-xs text-gray-400">
+                      <div className="flex items-center justify-between text-xs text-slate-400">
                         <span className="capitalize">{project.type}</span>
                         <span>{formatDate(project.modifiedAt)}</span>
                       </div>
