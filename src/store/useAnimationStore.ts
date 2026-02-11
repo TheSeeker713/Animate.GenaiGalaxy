@@ -224,7 +224,9 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
         ...newLayers[layerIndex],
         lines: lines,
         shapes: shapes,
-        imageData: dataUrl,
+        // Only update imageData when a non-empty value is provided (e.g. from fill tool).
+        // Auto-save passes '' to preserve existing raster data.
+        imageData: dataUrl || newLayers[layerIndex].imageData,
       }
     }
     

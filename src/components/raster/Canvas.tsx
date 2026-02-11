@@ -106,11 +106,10 @@ export default function Canvas() {
   useEffect(() => {
     if (!isDrawing && (lines.length > 0 || shapes.length > 0)) {
       const timer = setTimeout(() => {
-        const stage = stageRef.current
-        if (stage) {
-          const dataUrl = stage.toDataURL()
-          saveFrameDrawing(currentFrameIndex, currentLayerIndex, lines, shapes, dataUrl)
-        }
+        // Only save vector data — do NOT capture stage.toDataURL() as imageData
+        // because renderRasterLayers would render it back, creating a feedback loop.
+        // imageData is only set by raster operations (fill tool).
+        saveFrameDrawing(currentFrameIndex, currentLayerIndex, lines, shapes, '')
       }, 500)
       return () => clearTimeout(timer)
     }
@@ -1018,15 +1017,23 @@ export default function Canvas() {
             />
 
             {/* Onion skin - previous frame */}
-            {onionSkinEnabled && onionSkinImage && (
-              <Image
-                image={onionSkinImage}
-                x={0}
-                y={0}
-                width={documentWidth}
-                height={documentHeight}
-                opacity={0.3}
-              />
+            {onionSkinEnabled && previousFrame && previousFrame.layers[currentLayerIndex] && (
+              <Group opacity={0.3} listening={false}>
+                {/* Raster data (from fill tool) */}
+                {onionSkinImage && (
+                  <Image
+                    image={onionSkinImage}
+                    x={0}
+                    y={0}
+                    width={documentWidth}
+                    height={documentHeight}
+                    listening={false}
+                  />
+                )}
+                {/* Vector data (lines & shapes) */}
+                {renderLayerLines(previousFrame.layers[currentLayerIndex].lines || [])}
+                {renderLayerShapes(previousFrame.layers[currentLayerIndex].shapes || [])}
+              </Group>
             )}
 
             {/* Raster layers */}
