@@ -46,7 +46,7 @@ export default function RasterStudio() {
         navigate('/')
       }
     }
-  }, [projectId, getProjectById, setCurrentProject, navigate])
+  }, [projectId, getProjectById, setCurrentProject, navigate, applyProjectSettings])
 
   // Apply dark mode class to document
   useEffect(() => {
@@ -235,8 +235,8 @@ export default function RasterStudio() {
         {/* Main Content Area */}
         <div className="flex-1 flex overflow-hidden">
           {/* Canvas Area */}
-          <main className="flex-1 relative overflow-hidden flex items-center justify-center p-6 bg-slate-900">
-            <div className="relative rounded-2xl overflow-hidden studio-canvas-frame w-full h-full bg-white shadow-2xl">
+          <main className="flex-1 relative overflow-hidden">
+            <div className="w-full h-full studio-canvas">
               <Canvas />
             </div>
             {puppetMode && <WebcamPuppet />}

@@ -7,6 +7,7 @@ import Konva from 'konva'
 export default function Canvas() {
   const stageRef = useRef<Konva.Stage>(null)
   const layerRef = useRef<Konva.Layer>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   
   const [lines, setLines] = useState<LineData[]>([])
   const [shapes, setShapes] = useState<ShapeData[]>([])
@@ -22,6 +23,7 @@ export default function Canvas() {
   const [selectionImage, setSelectionImage] = useState<HTMLImageElement | null>(null)
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
   const [shiftHeld, setShiftHeld] = useState(false)
+  const hasAutoFitRef = useRef(false)
 
   // Track Shift key for snapping
   useEffect(() => {
@@ -40,6 +42,8 @@ export default function Canvas() {
     textSize,
     textFont,
     canvasColor,
+    documentWidth,
+    documentHeight,
     puppetMode,
     onionSkinEnabled,
     currentFrameIndex,
@@ -114,47 +118,48 @@ export default function Canvas() {
 
   // Resize canvas to fit container
   useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
     const updateSize = () => {
-      const container = stageRef.current?.container()
-      if(container) {
-        const parent = container.parentElement
-        if (parent) {
-          const width = parent.clientWidth
-          const height = parent.clientHeight
-          if (width > 0 && height > 0) {
-            setStageSize({ width, height })
-            setIsCanvasReady(true)
-          } else {
-            console.warn('Canvas parent has invalid dimensions:', { width, height })
-          }
-        } else {
-          console.warn('Canvas: no parent element found')
-        }
-      } else {
-        console.warn('Canvas: no container found')
+      const width = el.clientWidth
+      const height = el.clientHeight
+      if (width > 0 && height > 0) {
+        setStageSize({ width, height })
+        setIsCanvasReady(true)
       }
     }
 
-    // Initial size with slight delay to ensure DOM is ready
-    const timer = setTimeout(updateSize, 0)
+    // Measure immediately + after a frame to catch late layouts
     updateSize()
-    
-    // Use ResizeObserver for better resize detection
-    const container = stageRef.current?.container()
-    let resizeObserver: ResizeObserver | null = null
-    
-    if (container && container.parentElement) {
-      resizeObserver = new ResizeObserver(updateSize)
-      resizeObserver.observe(container.parentElement)
-    }
-    
-    window.addEventListener('resize', updateSize)
+    const raf = requestAnimationFrame(updateSize)
+
+    const resizeObserver = new ResizeObserver(updateSize)
+    resizeObserver.observe(el)
+
     return () => {
-      clearTimeout(timer)
-      window.removeEventListener('resize', updateSize)
-      resizeObserver?.disconnect()
+      cancelAnimationFrame(raf)
+      resizeObserver.disconnect()
     }
   }, [])
+
+  // Auto-fit artboard on first ready
+  useEffect(() => {
+    if (!isCanvasReady) return
+    if (hasAutoFitRef.current) return
+    if (documentWidth <= 0 || documentHeight <= 0) return
+    if (stageSize.width <= 0 || stageSize.height <= 0) return
+
+    const scaleX = stageSize.width / documentWidth
+    const scaleY = stageSize.height / documentHeight
+    const fitScale = Math.max(0.05, Math.min(5, Math.min(scaleX, scaleY) * 0.85))
+    const offsetX = (stageSize.width - documentWidth * fitScale) / 2
+    const offsetY = (stageSize.height - documentHeight * fitScale) / 2
+
+    setZoom(fitScale)
+    setPan(offsetX, offsetY)
+    hasAutoFitRef.current = true
+  }, [isCanvasReady, documentWidth, documentHeight, stageSize.width, stageSize.height, setZoom, setPan])
 
   const getPointerPosition = () => {
     const stage = stageRef.current
@@ -837,13 +842,12 @@ export default function Canvas() {
   }
 
   return (
-    <div className="w-full h-full studio-canvas flex items-center justify-center relative">
+    <div className="w-full h-full relative">
       {!isCanvasReady && (
         <div className="absolute inset-0 flex items-center justify-center z-50 bg-[var(--studio-bg)]/80">
           <div className="text-center">
             <div className="text-2xl mb-2">🎨</div>
             <div className="text-sm text-[var(--studio-text-dim)]">Initializing canvas...</div>
-            <div className="text-xs text-[var(--studio-text-dim)] mt-1">Size: {stageSize.width}×{stageSize.height}</div>
           </div>
         </div>
       )}
@@ -915,7 +919,7 @@ export default function Canvas() {
         </div>
       )}
 
-      <div className="w-full h-full relative overflow-hidden">
+      <div ref={containerRef} className="w-full h-full absolute inset-0">
         <Stage
           ref={stageRef}
           width={stageSize.width}
@@ -933,15 +937,30 @@ export default function Canvas() {
           onWheel={handleWheel}
           draggable={false}
           className={currentTool === 'brush' || currentTool === 'eraser' ? 'cursor-none' : 'cursor-crosshair'}
+          style={{ display: 'block' }}
         >
           <Layer ref={layerRef}>
-            {/* Canvas Background — fills entire visible area regardless of zoom */}
+            {/* Artboard — the actual drawing surface */}
             <Rect
-              x={-panX / zoom}
-              y={-panY / zoom}
-              width={stageSize.width / zoom}
-              height={stageSize.height / zoom}
-              fill={canvasColor}
+              x={0}
+              y={0}
+              width={documentWidth}
+              height={documentHeight}
+              fill={canvasColor === 'transparent' ? '#ffffff' : canvasColor}
+              shadowColor="rgba(0,0,0,0.5)"
+              shadowBlur={20 / zoom}
+              shadowOffsetX={0}
+              shadowOffsetY={4 / zoom}
+              listening={false}
+            />
+            {/* Artboard border */}
+            <Rect
+              x={0}
+              y={0}
+              width={documentWidth}
+              height={documentHeight}
+              stroke="rgba(148, 163, 184, 0.5)"
+              strokeWidth={1 / zoom}
               listening={false}
             />
             
@@ -949,8 +968,10 @@ export default function Canvas() {
             {onionSkinEnabled && onionSkinImage && (
               <Image
                 image={onionSkinImage}
-                width={stageSize.width / zoom}
-                height={stageSize.height / zoom}
+                x={0}
+                y={0}
+                width={documentWidth}
+                height={documentHeight}
                 opacity={0.3}
               />
             )}

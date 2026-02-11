@@ -438,8 +438,10 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
 
     const merge = async () => {
       const canvas = document.createElement('canvas')
-      canvas.width = 800
-      canvas.height = 600
+      const docW = useAnimationStore.getState().documentWidth || 1920
+      const docH = useAnimationStore.getState().documentHeight || 1080
+      canvas.width = docW
+      canvas.height = docH
       const ctx = canvas.getContext('2d')!
 
       if (lowerLayer.imageData) {
@@ -527,10 +529,8 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
         brushSize: state.brushSize,
         brushColor: state.brushColor,
         fillColor: state.fillColor,
+        canvasColor: state.canvasColor,
         colorPalette: state.colorPalette,
-        zoom: state.zoom,
-        panX: state.panX,
-        panY: state.panY,
         documentWidth: state.documentWidth,
         documentHeight: state.documentHeight,
       }
@@ -568,10 +568,12 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
           brushSize: data.brushSize ?? state.brushSize,
           brushColor: data.brushColor ?? state.brushColor,
           fillColor: data.fillColor ?? state.fillColor,
+          canvasColor: data.canvasColor ?? state.canvasColor,
           colorPalette: data.colorPalette || state.colorPalette,
-          zoom: data.zoom ?? state.zoom,
-          panX: data.panX ?? state.panX,
-          panY: data.panY ?? state.panY,
+          // Don't restore zoom/pan — auto-fit handles initial view
+          zoom: 1,
+          panX: 0,
+          panY: 0,
           documentWidth: data.documentWidth ?? state.documentWidth,
           documentHeight: data.documentHeight ?? state.documentHeight,
         }

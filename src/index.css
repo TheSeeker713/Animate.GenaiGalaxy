@@ -157,7 +157,11 @@ body {
 }
 
 .studio-canvas {
-  background: linear-gradient(180deg, rgba(10, 15, 26, 0.95), rgba(7, 11, 20, 0.95));
+  background: #1a1a2e;
+}
+
+.studio-canvas canvas {
+  display: block !important;
 }
 
 .studio-canvas-frame {
