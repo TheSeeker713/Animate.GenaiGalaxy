@@ -236,9 +236,7 @@ export default function RasterStudio() {
         <div className="flex-1 flex overflow-hidden">
           {/* Canvas Area */}
           <main className="flex-1 relative overflow-hidden">
-            <div className="w-full h-full studio-canvas">
-              <Canvas />
-            </div>
+            <Canvas />
             {puppetMode && <WebcamPuppet />}
             
             {/* Zoom Controls */}

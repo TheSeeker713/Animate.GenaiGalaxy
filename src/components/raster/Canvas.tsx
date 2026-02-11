@@ -49,7 +49,6 @@ export default function Canvas() {
     currentFrameIndex,
     currentLayerIndex,
     frames,
-    faceLandmarks,
     selection,
     zoom,
     panX,
@@ -122,24 +121,27 @@ export default function Canvas() {
     if (!el) return
 
     const updateSize = () => {
-      const width = el.clientWidth
-      const height = el.clientHeight
+      const rect = el.getBoundingClientRect()
+      const width = Math.floor(rect.width)
+      const height = Math.floor(rect.height)
       if (width > 0 && height > 0) {
         setStageSize({ width, height })
         setIsCanvasReady(true)
       }
     }
 
-    // Measure immediately + after a frame to catch late layouts
+    // Measure after layout
     updateSize()
-    const raf = requestAnimationFrame(updateSize)
+    const t1 = requestAnimationFrame(updateSize)
+    const t2 = setTimeout(updateSize, 100)
 
-    const resizeObserver = new ResizeObserver(updateSize)
-    resizeObserver.observe(el)
+    const ro = new ResizeObserver(updateSize)
+    ro.observe(el)
 
     return () => {
-      cancelAnimationFrame(raf)
-      resizeObserver.disconnect()
+      cancelAnimationFrame(t1)
+      clearTimeout(t2)
+      ro.disconnect()
     }
   }, [])
 
@@ -842,84 +844,71 @@ export default function Canvas() {
   }
 
   return (
-    <div className="w-full h-full relative">
-      {!isCanvasReady && (
-        <div className="absolute inset-0 flex items-center justify-center z-50 bg-[var(--studio-bg)]/80">
-          <div className="text-center">
-            <div className="text-2xl mb-2">🎨</div>
-            <div className="text-sm text-[var(--studio-text-dim)]">Initializing canvas...</div>
-          </div>
-        </div>
-      )}
-      
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        overflow: 'hidden',
+        background: '#1a1a2e',
+      }}
+    >
       {/* Tool Info Overlay */}
-      <div className="absolute top-4 left-4 studio-overlay z-10 text-sm space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400">Tool:</span>
-          <strong className="capitalize flex items-center gap-1">
-            {currentTool === 'brush' && '🖌️'}
-            {currentTool === 'eraser' && '🧹'}
-            {currentTool === 'rectangle' && '▢'}
-            {currentTool === 'ellipse' && '○'}
-            {currentTool === 'line' && '─'}
-            {currentTool === 'select' && '↖'}
-            {currentTool === 'eyedropper' && '💧'}
-            {currentTool === 'fill' && '🪣'}
-            {currentTool}
-          </strong>
-        </div>
+      <div
+        style={{ position: 'absolute', top: 16, left: 16, zIndex: 20 }}
+        className="studio-overlay text-sm space-y-1"
+      >
+        <div>Tool: <strong className="capitalize">{currentTool}</strong></div>
         {(currentTool === 'brush' || currentTool === 'eraser') && (
           <div className="flex items-center gap-2">
-            <span className="text-gray-400">Size:</span>
-            <strong>{brushSize}px</strong>
-            <div 
-              className="w-4 h-4 rounded-full border-2" 
-              style={{ 
+            Size: <strong>{brushSize}px</strong>
+            <div
+              className="w-4 h-4 rounded-full border-2"
+              style={{
                 borderColor: currentTool === 'eraser' ? '#EF4444' : brushColor,
-                transform: `scale(${Math.min(brushSize / 20, 1)})`
               }}
             />
           </div>
         )}
         {currentTool === 'brush' && (
           <div className="flex items-center gap-2">
-            <span className="text-gray-400">Color:</span>
-            <div 
-              className="w-6 h-4 rounded border border-gray-600" 
+            Color:
+            <div
+              className="w-6 h-4 rounded border border-gray-600"
               style={{ backgroundColor: brushColor }}
             />
           </div>
         )}
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400">Zoom:</span>
-          <strong>{Math.round(zoom * 100)}%</strong>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-gray-400">Layer:</span>
-          <strong>{currentLayerIndex + 1}</strong>
+        <div>Zoom: <strong>{Math.round(zoom * 100)}%</strong></div>
+        <div>Layer: <strong>{currentLayerIndex + 1}</strong></div>
+        <div style={{ opacity: 0.5, fontSize: 10 }}>
+          Doc: {documentWidth}&times;{documentHeight} &middot; Stage: {stageSize.width}&times;{stageSize.height}
         </div>
       </div>
 
       {/* Puppet mode indicator */}
       {puppetMode && (
-        <div className="absolute top-4 right-4 studio-pill studio-pill--success z-10">
-          🎭 Puppet Mode Active
-          {faceLandmarks && (
-            <span className="ml-2 text-sm">
-              ({faceLandmarks.length} landmarks)
-            </span>
-          )}
+        <div
+          style={{ position: 'absolute', top: 16, right: 16, zIndex: 20 }}
+          className="studio-pill studio-pill--success"
+        >
+          Puppet Mode Active
         </div>
       )}
 
       {/* Onion skin indicator */}
       {onionSkinEnabled && currentFrameIndex > 0 && (
-        <div className="absolute top-16 right-4 studio-pill studio-pill--info z-10">
-          👻 Onion Skin
+        <div
+          style={{ position: 'absolute', top: 64, right: 16, zIndex: 20 }}
+          className="studio-pill studio-pill--info"
+        >
+          Onion Skin
         </div>
       )}
 
-      <div ref={containerRef} className="w-full h-full absolute inset-0">
+      {/* Konva Stage */}
+      {isCanvasReady && stageSize.width > 0 && stageSize.height > 0 ? (
         <Stage
           ref={stageRef}
           width={stageSize.width}
@@ -936,11 +925,9 @@ export default function Canvas() {
           onTouchEnd={handleMouseUp}
           onWheel={handleWheel}
           draggable={false}
-          className={currentTool === 'brush' || currentTool === 'eraser' ? 'cursor-none' : 'cursor-crosshair'}
-          style={{ display: 'block' }}
         >
           <Layer ref={layerRef}>
-            {/* Artboard — the actual drawing surface */}
+            {/* Artboard background */}
             <Rect
               x={0}
               y={0}
@@ -963,7 +950,7 @@ export default function Canvas() {
               strokeWidth={1 / zoom}
               listening={false}
             />
-            
+
             {/* Onion skin - previous frame */}
             {onionSkinEnabled && onionSkinImage && (
               <Image
@@ -982,51 +969,55 @@ export default function Canvas() {
             {/* Temp shape preview */}
             {renderTempShape()}
 
-            {/* Shape cursor preview (before mousedown) */}
+            {/* Shape cursor preview */}
             {renderShapeCursorPreview()}
 
             {/* Brush cursor preview */}
-            {cursorPos && !isDrawing && (currentTool === 'brush' || currentTool === 'eraser') && (
-              <>
-                {/* Brush size circle */}
-                <Ellipse
-                  x={cursorPos.x}
-                  y={cursorPos.y}
-                  radiusX={brushSize / 2}
-                  radiusY={brushSize / 2}
-                  stroke={currentTool === 'eraser' ? '#EF4444' : brushColor}
-                  strokeWidth={2 / zoom}
-                  dash={currentTool === 'eraser' ? [5 / zoom, 5 / zoom] : undefined}
-                  listening={false}
-                  opacity={0.6}
-                />
-                {/* Center crosshair */}
-                <Line
-                  points={[
-                    cursorPos.x - 10 / zoom,
-                    cursorPos.y,
-                    cursorPos.x + 10 / zoom,
-                    cursorPos.y
-                  ]}
-                  stroke={currentTool === 'eraser' ? '#EF4444' : '#666'}
-                  strokeWidth={1 / zoom}
-                  listening={false}
-                  opacity={0.8}
-                />
-                <Line
-                  points={[
-                    cursorPos.x,
-                    cursorPos.y - 10 / zoom,
-                    cursorPos.x,
-                    cursorPos.y + 10 / zoom
-                  ]}
-                  stroke={currentTool === 'eraser' ? '#EF4444' : '#666'}
-                  strokeWidth={1 / zoom}
-                  listening={false}
-                  opacity={0.8}
-                />
-              </>
-            )}
+            {cursorPos &&
+              !isDrawing &&
+              (currentTool === 'brush' || currentTool === 'eraser') && (
+                <>
+                  <Ellipse
+                    x={cursorPos.x}
+                    y={cursorPos.y}
+                    radiusX={brushSize / 2}
+                    radiusY={brushSize / 2}
+                    stroke={currentTool === 'eraser' ? '#EF4444' : brushColor}
+                    strokeWidth={2 / zoom}
+                    dash={
+                      currentTool === 'eraser'
+                        ? [5 / zoom, 5 / zoom]
+                        : undefined
+                    }
+                    listening={false}
+                    opacity={0.6}
+                  />
+                  <Line
+                    points={[
+                      cursorPos.x - 10 / zoom,
+                      cursorPos.y,
+                      cursorPos.x + 10 / zoom,
+                      cursorPos.y,
+                    ]}
+                    stroke={currentTool === 'eraser' ? '#EF4444' : '#666'}
+                    strokeWidth={1 / zoom}
+                    listening={false}
+                    opacity={0.8}
+                  />
+                  <Line
+                    points={[
+                      cursorPos.x,
+                      cursorPos.y - 10 / zoom,
+                      cursorPos.x,
+                      cursorPos.y + 10 / zoom,
+                    ]}
+                    stroke={currentTool === 'eraser' ? '#EF4444' : '#666'}
+                    strokeWidth={1 / zoom}
+                    listening={false}
+                    opacity={0.8}
+                  />
+                </>
+              )}
 
             {/* Selection box */}
             {selection && (
@@ -1040,11 +1031,19 @@ export default function Canvas() {
                 dash={[5 / zoom, 5 / zoom]}
               />
             )}
-            {/* Selection rectangle preview (while dragging) */}
+            {/* Selection rectangle preview */}
             {tempSelection && currentTool === 'select' && (
               <Rect
-                x={tempSelection.width < 0 ? tempSelection.x + tempSelection.width : tempSelection.x}
-                y={tempSelection.height < 0 ? tempSelection.y + tempSelection.height : tempSelection.y}
+                x={
+                  tempSelection.width < 0
+                    ? tempSelection.x + tempSelection.width
+                    : tempSelection.x
+                }
+                y={
+                  tempSelection.height < 0
+                    ? tempSelection.y + tempSelection.height
+                    : tempSelection.y
+                }
                 width={Math.abs(tempSelection.width)}
                 height={Math.abs(tempSelection.height)}
                 stroke="#3B82F6"
@@ -1057,7 +1056,6 @@ export default function Canvas() {
             {/* Active selection */}
             {selection && currentTool === 'select' && selectionImage && (
               <>
-                {/* Selection content */}
                 <Image
                   image={selectionImage}
                   x={selection.x}
@@ -1066,7 +1064,6 @@ export default function Canvas() {
                   height={selection.height}
                   draggable
                 />
-                {/* Selection border */}
                 <Rect
                   x={selection.x}
                   y={selection.y}
@@ -1078,9 +1075,24 @@ export default function Canvas() {
                   listening={false}
                 />
               </>
-            )}          </Layer>
+            )}
+          </Layer>
         </Stage>
-      </div>
+      ) : (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            color: '#94a3b8',
+          }}
+        >
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>Loading canvas...</div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
