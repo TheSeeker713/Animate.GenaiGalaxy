@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ReactFlowProvider } from 'reactflow'
 import { useStoryStore } from '../store/storyStore'
@@ -6,10 +6,12 @@ import StoryCanvas from '../components/story/StoryCanvas'
 import NodePalette from '../components/story/NodePalette'
 import NodeInspector from '../components/story/NodeInspector'
 import StoryPreview from '../components/story/StoryPreview'
+import ExportModal from '../components/story/ExportModal'
 
 export default function StoryBuilder() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [exportModalOpen, setExportModalOpen] = useState(false)
   const {
     currentStory,
     previewMode,
@@ -146,7 +148,7 @@ export default function StoryBuilder() {
           </button>
           
           <button
-            onClick={() => alert('Export coming in Phase 4!')}
+            onClick={() => setExportModalOpen(true)}
             className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white transition-colors text-sm font-medium"
           >
             📦 Export
@@ -172,6 +174,9 @@ export default function StoryBuilder() {
 
       {/* Story Preview Overlay */}
       {previewMode && <StoryPreview />}
+
+      {/* Export Modal */}
+      <ExportModal isOpen={exportModalOpen} onClose={() => setExportModalOpen(false)} />
     </div>
   )
 }
