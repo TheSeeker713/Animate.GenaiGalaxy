@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import ReactFlow, {
   Background,
   Controls,
@@ -48,10 +48,20 @@ export default function StoryCanvas() {
     deleteEdge,
   } = useStoryStore()
 
-  const [nodes, _setNodesState, onNodesChange] = useNodesState(storeNodes)
+  const [nodes, setNodesState, onNodesChange] = useNodesState(storeNodes)
   const [edges, setEdgesState, onEdgesChange] = useEdgesState(storeEdges)
   
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
+
+  // Sync store nodes to React Flow when store changes (e.g., from inspector)
+  useEffect(() => {
+    setNodesState(storeNodes)
+  }, [storeNodes, setNodesState])
+
+  // Sync store edges to React Flow when store changes
+  useEffect(() => {
+    setEdgesState(storeEdges)
+  }, [storeEdges, setEdgesState])
 
   // Sync React Flow state with Zustand store
   const handleNodesChange: OnNodesChange = useCallback(

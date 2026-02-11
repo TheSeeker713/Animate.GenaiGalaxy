@@ -4,6 +4,7 @@ import { ReactFlowProvider } from 'reactflow'
 import { useStoryStore } from '../store/storyStore'
 import StoryCanvas from '../components/story/StoryCanvas'
 import NodePalette from '../components/story/NodePalette'
+import NodeInspector from '../components/story/NodeInspector'
 
 export default function StoryBuilder() {
   const { id } = useParams<{ id: string }>()
@@ -162,16 +163,8 @@ export default function StoryBuilder() {
           </ReactFlowProvider>
         </div>
 
-        {/* Node Inspector (Right Sidebar) - Coming in Phase 2 */}
-        <div className="w-80 bg-slate-800 border-l border-slate-700 p-4 overflow-y-auto">
-          <h2 className="text-lg font-bold text-white mb-2">Node Inspector</h2>
-          <p className="text-sm text-slate-400">
-            Select a node to edit its properties.
-          </p>
-          <div className="mt-4 p-4 bg-slate-700 rounded-lg text-center text-xs text-slate-400">
-            Coming in Phase 2: Dialogue System
-          </div>
-        </div>
+        {/* Node Inspector (Right Sidebar) */}
+        <NodeInspector />
       </div>
     </div>
   )
