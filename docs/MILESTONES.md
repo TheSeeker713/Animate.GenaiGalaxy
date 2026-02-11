@@ -348,7 +348,99 @@
 
 ---
 
-### Milestone 6: Performance Layer - Pixi.js + Spine (Week 7-8)
+### Milestone 6: Story Builder - Interactive Storytelling (Week 7-10)
+**Status:** 🔜 NEXT UP (Starting February 11, 2026)
+
+**Goals:**
+- Build the 4th studio - node-based interactive storytelling system
+- 6 node types: Start, Dialogue, Choice, Branch, Variable, End
+- Character integration (import from Character Studio)
+- Preview mode (visual novel player)
+- Export to standalone HTML5
+
+**See:** [STORY_BUILDER_PLAN.md](./STORY_BUILDER_PLAN.md) for detailed specifications
+
+**Phase Breakdown:**
+
+#### Phase 1: Foundation (Week 7)
+- Install React Flow for node editor
+- Create `StoryBuilder.tsx` page with canvas
+- Implement `storyStore.ts` (Zustand)
+- Build custom node components (6 types)
+- Node palette with drag-to-add
+- Connection system (drag ports)
+- Basic keyboard shortcuts (Delete, Ctrl+Z)
+- Minimap and controls
+
+#### Phase 2: Dialogue System (Week 8)
+- Node inspector panel (right sidebar)
+- Text editor with markdown support
+- Character import from Character Studio
+- Character picker modal
+- Expression/animation selectors
+- Background image picker
+- Preview pane for dialogue
+
+#### Phase 3: Preview & Playback (Week 9)
+- Visual novel player UI
+- Graph traversal (follow connections)
+- Render dialogue with character portraits
+- Choice buttons with branching
+- Variable tracking system
+- History/back button
+- Exit to editor
+
+#### Phase 4: Export (Week 10)
+- Standalone HTML5 export (single file)
+- Vanilla JS player engine (no React)
+- Embed character assets (base64)
+- Project JSON export/import
+- Export modal with settings
+- Browser testing (Chrome, Firefox, Safari)
+
+**Dependencies:**
+- `reactflow@11.0.0` - Node editor library
+- Existing Character Studio integration
+- Existing projectStore for character data
+
+**Technical Stack:**
+```typescript
+// State structure
+interface StoryStore {
+  nodes: StoryNode[]
+  connections: Connection[]
+  variables: Record<string, any>
+  importedCharacters: Character[]
+  selectedNodeId: string | null
+  previewMode: boolean
+}
+
+// Node types
+type NodeType = 'start' | 'dialogue' | 'choice' | 'branch' | 'variable' | 'end'
+```
+
+**Success Criteria:**
+- ✅ Can create and connect 6 node types
+- ✅ Can edit dialogue with character portraits
+- ✅ Can create branching narratives with choices
+- ✅ Preview mode plays story correctly
+- ✅ Export to HTML5 works standalone
+- ✅ Can import characters from Character Studio
+- ✅ Auto-save to localStorage works
+- ✅ Undo/redo functions
+- ✅ Variable system tracks player state
+
+**Inspiration:**
+- Twine (node-based story editor)
+- Yarn Spinner (game dialogue)
+- Ren'Py (visual novel engine)
+- React Flow (node editor implementation)
+
+**Deliverable:** Fully functional Story Builder as 4th studio, completing the "4 studios" vision
+
+---
+
+### Milestone 7: Performance Layer - Pixi.js + Spine (Week 11-12)
 **Status:** 🔜 PLANNED
 
 **Goals:**
@@ -394,7 +486,7 @@
 
 ---
 
-### Milestone 7: Advanced Template Library (Week 9-10)
+### Milestone 8: Advanced Template Library (Week 13-14)
 **Status:** 🔜 PLANNED
 
 **Goals:**
@@ -607,22 +699,25 @@
 
 ## 🚀 Next Steps (Immediate Actions)
 
-1. **Update Documentation** ✅
-   - MASTER_PLAN.md with current status
-   - TECHNICAL_ROADMAP.md with implementation details
-   - Create COPILOT_ROADMAP.md for AI assistance
+1. **Story Builder - Phase 1: Foundation** 🎯 NEXT
+   - Install React Flow: `npm install reactflow`
+   - Create `StoryBuilder.tsx` page
+   - Implement `storyStore.ts` with Zustand
+   - Build 6 custom node components
+   - Node palette with drag-to-add
+   - See [STORY_BUILDER_PLAN.md](./STORY_BUILDER_PLAN.md) for full specs
 
-2. **Commission Template Artwork** 🔜
-   - Hire artists for 50+ character designs
-   - Create style guide and asset specifications
-   - Set up asset pipeline (PSD → JSON)
+2. **Update Routing** 🔜
+   - Add `/story` and `/story/:id` routes
+   - Update Dashboard story button (remove "coming soon" alert)
+   - Create story project creation flow
 
-3. **Start Milestone 5: Face Tracking** 🔜
-   - Research MediaPipe integration
-   - Prototype landmark mapping
-   - Test webcam access in browser
+3. **Face Tracking Recording System** 🔜
+   - Implement recording capture
+   - Save tracked performances
+   - Export recorded animations
 
-4. **Plan Milestone 6: Pixi.js** 🔜
+4. **Pixi.js Performance Layer** 🔜
    - Research Spine runtime integration
    - Prototype dual-render architecture
    - Test Spine JSON export compatibility
@@ -633,11 +728,12 @@
 
 - **Repository:** https://github.com/TheSeeker713/Animate.GenaiGalaxy.git
 - **Branch:** main
-- **Last Commit:** `1d9152e` (February 10, 2026)
+- **Last Commit:** `b29da5a` (February 10, 2026 - Fixed duplicate canvas feedback loop)
 - **Documentation:** `/docs/` folder
+- **Story Builder Plan:** [STORY_BUILDER_PLAN.md](./STORY_BUILDER_PLAN.md)
 
 ---
 
 **End of Milestones Document**  
 *This document is updated after every major feature completion*  
-*UI polish is deliberately deferred - focus on functionality first*
+*Story Builder is next - completing the 4 studios vision*

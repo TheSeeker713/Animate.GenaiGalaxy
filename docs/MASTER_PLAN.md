@@ -10,17 +10,18 @@
 ### ✅ COMPLETED (Ready for Use)
 - **Raster Animation Studio:** Frame-by-frame animation, GIF export, visual feedback
 - **Vector Studio:** Shape tools, keyframe tweening, property editing
-- **Character Studio Core:** Template system, bone manipulation, morph sliders, export (PNG/Spine JSON), undo/redo, auto-save
+- **Character Studio Core:** Template system, bone manipulation, morph sliders, export (PNG/Spine JSON), undo/redo, auto-save, face tracking
 
 ### 🚧 IN PROGRESS
-- Documentation and workflow standardization
+- **Story Builder:** Planning complete, implementation starting (4-week timeline)
 
 ### 🔜 NEXT UP
-- Face tracking integration (MediaPipe)
+- Story Builder prototype (node editor + dialogue system)
 - Pixi.js + Spine playback layer
 - 50+ professional character templates
 
-**See [MILESTONES.md](./MILESTONES.md) for detailed progress tracking.**
+**See [MILESTONES.md](./MILESTONES.md) for detailed progress tracking.**  
+**See [STORY_BUILDER_PLAN.md](./STORY_BUILDER_PLAN.md) for Story Builder specifications.**
 
 ---
 
@@ -614,11 +615,40 @@ class PerformanceRecorder {
 
 ---
 
-### 5. Story Builder (PLANNED 📋)
-- Node-based narrative system
-- Import animated characters
-- Branching dialogue
-- Export to HTML5/Unity/Unreal
+### 5. Story Builder (IN PLANNING 🚧 → Implementation Week 7-10)
+**Status:** Planning complete, ready for implementation  
+**Timeline:** 4 weeks (February 11 - March 10, 2026)
+
+**See:** [STORY_BUILDER_PLAN.md](./STORY_BUILDER_PLAN.md) for complete specifications
+
+**Core Features:**
+- Node-based narrative editor (React Flow)
+- 6 node types: Start, Dialogue, Choice, Branch, Variable, End
+- Character integration from Character Studio
+- Visual novel preview mode
+- Branching dialogue with variables
+- Export to standalone HTML5
+
+**Use Cases:**
+- Visual novels with animated characters
+- Game dialogue trees
+- Interactive comics
+- Educational choose-your-own-adventure
+- Marketing narratives
+
+**Technical Stack:**
+- React Flow for node editor
+- Zustand for state (storyStore.ts)
+- Vanilla JS player engine for exports
+- Character asset embedding (base64)
+
+**Phase Breakdown:**
+- Week 7: Node editor foundation
+- Week 8: Dialogue system + character picker
+- Week 9: Preview mode + playback
+- Week 10: Export to HTML5
+
+**Deliverable:** Completes the "4 Studios" vision
 
 ---
 
