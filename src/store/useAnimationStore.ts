@@ -39,8 +39,8 @@ interface AnimationStore extends DrawingState {
   pushHistory: () => void
   
   // Storage actions
-  saveToStorage: () => void
-  loadFromStorage: () => void
+  saveToStorage: (storageKey?: string) => void
+  loadFromStorage: (storageKey?: string) => void
   
   // Layer actions
   setCurrentLayer: (index: number) => void
@@ -61,6 +61,10 @@ interface AnimationStore extends DrawingState {
   
   // Canvas color
   setCanvasColor: (color: string) => void
+
+  // Document size
+  setDocumentSize: (width: number, height: number) => void
+  applyProjectSettings: (settings: { width: number; height: number; fps?: number }) => void
   
   // Color palette
   addColorToPalette: (color: string) => void
@@ -100,6 +104,8 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   textSize: 24,
   textFont: 'Arial',
   canvasColor: '#FAF9F6',
+  documentWidth: 1920,
+  documentHeight: 1080,
   currentFrameIndex: 0,
   currentLayerIndex: 0,
   fps: 24,
@@ -484,6 +490,17 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   
   // Canvas color
   setCanvasColor: (color) => set({ canvasColor: color }),
+
+  // Document size
+  setDocumentSize: (width, height) => set({
+    documentWidth: Math.max(1, width),
+    documentHeight: Math.max(1, height),
+  }),
+  applyProjectSettings: (settings) => set((state) => ({
+    documentWidth: Math.max(1, settings.width),
+    documentHeight: Math.max(1, settings.height),
+    fps: settings.fps ?? state.fps,
+  })),
   
   // Color palette
   addColorToPalette: (color) => set((state) => {
@@ -497,7 +514,7 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   setFaceLandmarks: (landmarks) => set({ faceLandmarks: landmarks }),
   
   // Storage actions
-  saveToStorage: () => {
+  saveToStorage: (storageKey = 'animate-project') => {
     const state = useAnimationStore.getState()
     try {
       const dataToSave = {
@@ -514,29 +531,37 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
         zoom: state.zoom,
         panX: state.panX,
         panY: state.panY,
+        documentWidth: state.documentWidth,
+        documentHeight: state.documentHeight,
       }
-      localStorage.setItem('animate-project', JSON.stringify(dataToSave))
+      localStorage.setItem(storageKey, JSON.stringify(dataToSave))
       console.log('Project saved to localStorage')
     } catch (error) {
       console.error('Failed to save to localStorage:', error)
       // If quota exceeded, try clearing old data
       if (error instanceof Error && error.name === 'QuotaExceededError') {
-        localStorage.removeItem('animate-project')
+        localStorage.removeItem(storageKey)
         console.warn('Storage quota exceeded, cleared old data')
       }
     }
   },
   
-  loadFromStorage: () => set((state) => {
+  loadFromStorage: (storageKey = 'animate-project') => set((state) => {
     try {
-      const stored = localStorage.getItem('animate-project')
+      const stored = localStorage.getItem(storageKey)
       if (stored) {
         const data = JSON.parse(stored)
+        const defaultFrames = [createDefaultFrame()]
+        const storedFrames = Array.isArray(data.frames) && data.frames.length > 0
+          ? data.frames
+          : defaultFrames
+        const safeFrameIndex = Math.max(0, Math.min(data.currentFrameIndex ?? state.currentFrameIndex, storedFrames.length - 1))
+        const safeLayerIndex = Math.max(0, Math.min(data.currentLayerIndex ?? state.currentLayerIndex, storedFrames[safeFrameIndex].layers.length - 1))
         console.log('Project loaded from localStorage')
         return {
-          frames: data.frames || state.frames,
-          currentFrameIndex: data.currentFrameIndex ?? state.currentFrameIndex,
-          currentLayerIndex: data.currentLayerIndex ?? state.currentLayerIndex,
+          frames: storedFrames,
+          currentFrameIndex: safeFrameIndex,
+          currentLayerIndex: safeLayerIndex,
           fps: data.fps ?? state.fps,
           onionSkinEnabled: data.onionSkinEnabled ?? state.onionSkinEnabled,
           darkMode: data.darkMode ?? state.darkMode,
@@ -547,6 +572,8 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
           zoom: data.zoom ?? state.zoom,
           panX: data.panX ?? state.panX,
           panY: data.panY ?? state.panY,
+          documentWidth: data.documentWidth ?? state.documentWidth,
+          documentHeight: data.documentHeight ?? state.documentHeight,
         }
       }
     } catch (error) {

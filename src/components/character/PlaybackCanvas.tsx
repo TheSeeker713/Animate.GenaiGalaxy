@@ -4,8 +4,10 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { Application } from 'pixi.js'
+import type { Application } from 'pixi.js'
 import type { Character } from '@/types/character'
+
+type PixiModule = typeof import('pixi.js')
 
 interface PlaybackCanvasProps {
   character: Character
@@ -39,8 +41,10 @@ export default function PlaybackCanvas({
 
     const initPixi = async () => {
       try {
+        const pixi = await import('pixi.js')
+
         // Create Pixi app
-        const app = new Application()
+        const app = new pixi.Application()
         await app.init({
           canvas: canvasRef.current!,
           width,
@@ -63,7 +67,7 @@ export default function PlaybackCanvas({
 
         // For now, show a placeholder since we need actual Spine asset loading
         // In production, this would load the actual Spine atlas and skeleton
-        const placeholder = await createPlaceholderSprite(app, character)
+        const placeholder = await createPlaceholderSprite(pixi, app, character)
         app.stage.addChild(placeholder)
 
         // FPS counter
@@ -159,8 +163,8 @@ export default function PlaybackCanvas({
  * Create a placeholder sprite until we have proper Spine asset loading
  * This shows the character layers as Pixi sprites
  */
-async function createPlaceholderSprite(app: Application, character: Character): Promise<any> {
-  const container = new (await import('pixi.js')).Container()
+async function createPlaceholderSprite(pixi: PixiModule, app: Application, character: Character): Promise<any> {
+  const container = new pixi.Container()
   
   // Center container
   container.x = app.screen.width / 2
@@ -168,14 +172,14 @@ async function createPlaceholderSprite(app: Application, character: Character): 
   container.pivot.set(0.5, 0.5)
 
   // Add text placeholder
-  const style = new (await import('pixi.js')).TextStyle({
+  const style = new pixi.TextStyle({
     fontFamily: 'Space Grotesk, sans-serif',
     fontSize: 24,
     fill: 0x38e1c0,
     align: 'center'
   })
 
-  const text = new (await import('pixi.js')).Text({
+  const text = new pixi.Text({
     text: `${character.name}\n\nSpine Playback Ready\n\n(Requires Spine assets)`,
     style
   })

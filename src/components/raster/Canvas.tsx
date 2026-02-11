@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { Stage, Layer, Line, Rect, Ellipse, Image, Text } from 'react-konva'
+import { Stage, Layer, Line, Rect, Ellipse, Image, Text, Group } from 'react-konva'
 import { useAnimationStore } from '../../store/useAnimationStore'
-import type { LineData, ShapeData } from '../../types'
+import type { LineData, ShapeData, Layer as RasterLayer } from '../../types'
 import Konva from 'konva'
 
 export default function Canvas() {
@@ -274,7 +274,7 @@ export default function Canvas() {
     pushHistory()
   }
 
-  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+  const handleMouseDown = (_e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (puppetMode) return
     
     const pos = getPointerPosition()
@@ -369,7 +369,7 @@ export default function Canvas() {
     }
   }
 
-  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+  const handleMouseMove = (_e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     const pos = getPointerPosition()
     if (!pos) return
     
@@ -424,7 +424,7 @@ export default function Canvas() {
     }
   }
 
-  const handleMouseUp = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+  const handleMouseUp = (_e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (!isDrawing) return
 
     const pos = getPointerPosition()
@@ -722,6 +722,120 @@ export default function Canvas() {
     }
   }
 
+  const resolveLayerComposite = (blendMode?: RasterLayer['blendMode']) => {
+    switch (blendMode) {
+      case 'multiply':
+        return 'multiply'
+      case 'screen':
+        return 'screen'
+      case 'overlay':
+        return 'overlay'
+      case 'darken':
+        return 'darken'
+      case 'lighten':
+        return 'lighten'
+      default:
+        return 'source-over'
+    }
+  }
+
+  const renderLayerLines = (layerLines: LineData[]) => (
+    layerLines.map((line, i) => (
+      <Line
+        key={`${line.tool}-${i}`}
+        points={line.points}
+        stroke={line.color}
+        strokeWidth={line.size}
+        tension={0.5}
+        lineCap="round"
+        lineJoin="round"
+        globalCompositeOperation={
+          line.tool === 'eraser' ? 'destination-out' : 'source-over'
+        }
+      />
+    ))
+  )
+
+  const renderLayerShapes = (layerShapes: ShapeData[]) => (
+    layerShapes.map((shape) => {
+      if (shape.type === 'rectangle') {
+        return (
+          <Rect
+            key={shape.id}
+            x={shape.x}
+            y={shape.y}
+            width={shape.width}
+            height={shape.height}
+            stroke={shape.color}
+            strokeWidth={shape.strokeWidth}
+            fill={shape.fill}
+          />
+        )
+      } else if (shape.type === 'ellipse') {
+        return (
+          <Ellipse
+            key={shape.id}
+            x={shape.x + (shape.width || 0) / 2}
+            y={shape.y + (shape.height || 0) / 2}
+            radiusX={(shape.width || 0) / 2}
+            radiusY={(shape.height || 0) / 2}
+            stroke={shape.color}
+            strokeWidth={shape.strokeWidth}
+            fill={shape.fill}
+          />
+        )
+      } else if (shape.type === 'line') {
+        return (
+          <Line
+            key={shape.id}
+            points={[shape.x, shape.y, shape.x2 || shape.x, shape.y2 || shape.y]}
+            stroke={shape.color}
+            strokeWidth={shape.strokeWidth}
+          />
+        )
+      } else if (shape.type === 'text') {
+        return (
+          <Text
+            key={shape.id}
+            x={shape.x}
+            y={shape.y}
+            text={shape.text || ''}
+            fontSize={shape.fontSize || 24}
+            fontFamily={shape.fontFamily || 'Arial'}
+            fontStyle={shape.fontStyle || 'normal'}
+            fill={shape.color}
+            align={shape.align || 'left'}
+            rotation={shape.rotation || 0}
+            scaleX={shape.scaleX || 1}
+            scaleY={shape.scaleY || 1}
+          />
+        )
+      }
+      return null
+    })
+  )
+
+  const renderRasterLayers = () => {
+    if (!currentFrame) return null
+
+    return currentFrame.layers.map((layer, layerIndex) => {
+      if (!layer.visible) return null
+      const layerLines = layerIndex === currentLayerIndex ? lines : (layer.lines || [])
+      const layerShapes = layerIndex === currentLayerIndex ? shapes : (layer.shapes || [])
+
+      return (
+        <Group
+          key={layer.id}
+          opacity={layer.opacity}
+          globalCompositeOperation={resolveLayerComposite(layer.blendMode)}
+        >
+          {renderLayerLines(layerLines)}
+          {renderLayerShapes(layerShapes)}
+        </Group>
+      )
+    })
+  }
+
   return (
     <div className="w-full h-full studio-canvas flex items-center justify-center relative">
       {!isCanvasReady && (
@@ -841,79 +955,8 @@ export default function Canvas() {
               />
             )}
 
-            {/* Current drawing lines */}
-            {lines.map((line, i) => (
-              <Line
-                key={i}
-                points={line.points}
-                stroke={line.color}
-                strokeWidth={line.size}
-                tension={0.5}
-                lineCap="round"
-                lineJoin="round"
-                globalCompositeOperation={
-                  line.tool === 'eraser' ? 'destination-out' : 'source-over'
-                }
-              />
-            ))}
-
-            {/* Shapes */}
-            {shapes.map((shape) => {
-              if (shape.type === 'rectangle') {
-                return (
-                  <Rect
-                    key={shape.id}
-                    x={shape.x}
-                    y={shape.y}
-                    width={shape.width}
-                    height={shape.height}
-                    stroke={shape.color}
-                    strokeWidth={shape.strokeWidth}
-                    fill={shape.fill}
-                  />
-                )
-              } else if (shape.type === 'ellipse') {
-                return (
-                  <Ellipse
-                    key={shape.id}
-                    x={shape.x + (shape.width || 0) / 2}
-                    y={shape.y + (shape.height || 0) / 2}
-                    radiusX={(shape.width || 0) / 2}
-                    radiusY={(shape.height || 0) / 2}
-                    stroke={shape.color}
-                    strokeWidth={shape.strokeWidth}
-                    fill={shape.fill}
-                  />
-                )
-              } else if (shape.type === 'line') {
-                return (
-                  <Line
-                    key={shape.id}
-                    points={[shape.x, shape.y, shape.x2 || shape.x, shape.y2 || shape.y]}
-                    stroke={shape.color}
-                    strokeWidth={shape.strokeWidth}
-                  />
-                )
-              } else if (shape.type === 'text') {
-                return (
-                  <Text
-                    key={shape.id}
-                    x={shape.x}
-                    y={shape.y}
-                    text={shape.text || ''}
-                    fontSize={shape.fontSize || 24}
-                    fontFamily={shape.fontFamily || 'Arial'}
-                    fontStyle={shape.fontStyle || 'normal'}
-                    fill={shape.color}
-                    align={shape.align || 'left'}
-                    rotation={shape.rotation || 0}
-                    scaleX={shape.scaleX || 1}
-                    scaleY={shape.scaleY || 1}
-                  />
-                )
-              }
-              return null
-            })}
+            {/* Raster layers */}
+            {renderRasterLayers()}
 
             {/* Temp shape preview */}
             {renderTempShape()}

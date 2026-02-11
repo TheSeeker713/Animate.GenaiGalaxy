@@ -12,22 +12,23 @@ import WebcamPuppet from '../components/WebcamPuppet'
 export default function RasterStudio() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const { darkMode, toggleDarkMode, puppetMode, loadFromStorage, saveToStorage, frames } = useAnimationStore()
+  const { darkMode, toggleDarkMode, puppetMode, loadFromStorage, saveToStorage, frames, applyProjectSettings } = useAnimationStore()
   const { getProjectById, setCurrentProject } = useProjectStore()
   const [showExportModal, setShowExportModal] = useState(false)
+  const storageKey = projectId ? `animate-project-${projectId}` : 'animate-project'
 
   // Load from localStorage on mount
   useEffect(() => {
-    loadFromStorage()
-  }, [loadFromStorage])
+    loadFromStorage(storageKey)
+  }, [loadFromStorage, storageKey])
 
   // Auto-save to localStorage when frames change (debounced)
   useEffect(() => {
     const timer = setTimeout(() => {
-      saveToStorage()
+      saveToStorage(storageKey)
     }, 1000)
     return () => clearTimeout(timer)
-  }, [frames, saveToStorage])
+  }, [frames, saveToStorage, storageKey])
 
   // Load project on mount
   useEffect(() => {
@@ -35,6 +36,11 @@ export default function RasterStudio() {
       const project = getProjectById(projectId)
       if (project) {
         setCurrentProject(project)
+        applyProjectSettings({
+          width: project.width,
+          height: project.height,
+          fps: project.fps,
+        })
       } else {
         // Project not found, redirect to dashboard
         navigate('/')
