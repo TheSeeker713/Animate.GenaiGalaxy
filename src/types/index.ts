@@ -2,11 +2,15 @@ import type { NormalizedLandmark } from '@mediapipe/tasks-vision'
 
 export type Tool = 'brush' | 'eraser' | 'select' | 'rectangle' | 'ellipse' | 'line' | 'fill' | 'eyedropper' | 'text' | 'transform'
 
+export type InputDeviceType = 'pen' | 'touch' | 'mouse'
+
 export interface LineData {
   tool: 'brush' | 'eraser'
-  points: number[]
+  points: number[] // [x1, y1, x2, y2, ...] flat array of coordinates
   color: string
-  size: number
+  size: number // base stroke width
+  pressures?: number[] // [p1, p2, ...] parallel array of pressure values (0.0-1.0)
+  deviceType?: InputDeviceType // device used to create the stroke
 }
 
 export interface ShapeData {

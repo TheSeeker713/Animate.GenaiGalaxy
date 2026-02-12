@@ -3,6 +3,8 @@ import { Stage, Layer, Line, Rect, Ellipse, Image, Text, Group } from 'react-kon
 import { useAnimationStore } from '../../store/useAnimationStore'
 import type { LineData, ShapeData, Layer as RasterLayer } from '../../types'
 import Konva from 'konva'
+import { extractPressure, detectDeviceType, hasPressureSupport } from '../../utils/pressureInput'
+import PressureLine from './PressureLine'
 
 export default function Canvas() {
   const stageRef = useRef<Konva.Stage>(null)
@@ -12,6 +14,7 @@ export default function Canvas() {
   const [lines, setLines] = useState<LineData[]>([])
   const [shapes, setShapes] = useState<ShapeData[]>([])
   const [isDrawing, setIsDrawing] = useState(false)
+  const [currentStrokeHasPressure, setCurrentStrokeHasPressure] = useState(false)
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 })
   const [isCanvasReady, setIsCanvasReady] = useState(false)
   const [onionSkinImage, setOnionSkinImage] = useState<HTMLImageElement | null>(null)
@@ -333,7 +336,7 @@ export default function Canvas() {
     })
   }
 
-  const handleMouseDown = (_e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+  const handlePointerDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
     if (puppetMode) return
     
     const pos = getPointerPosition()
@@ -341,6 +344,14 @@ export default function Canvas() {
       console.warn('Canvas: getPointerPosition returned null')
       return
     }
+
+    // Extract device type and pressure data from PointerEvent
+    const nativeEvent = e.evt
+    const deviceType = detectDeviceType(nativeEvent)
+    const hasPressure = hasPressureSupport(nativeEvent)
+    const initialPressure = extractPressure(nativeEvent)
+    
+    setCurrentStrokeHasPressure(hasPressure)
 
     switch (currentTool) {
       case 'brush':
@@ -353,6 +364,8 @@ export default function Canvas() {
             points: [pos.x, pos.y],
             color: brushColor,
             size: brushSize,
+            pressures: hasPressure ? [initialPressure] : undefined,
+            deviceType,
           },
         ])
         break
@@ -428,7 +441,7 @@ export default function Canvas() {
     }
   }
 
-  const handleMouseMove = (_e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+  const handlePointerMove = (e: Konva.KonvaEventObject<PointerEvent>) => {
     const pos = getPointerPosition()
     if (!pos) return
     
@@ -442,7 +455,22 @@ export default function Canvas() {
       case 'eraser': {
         const lastLine = lines[lines.length - 1]
         if (!lastLine) return
-        const updatedLine = { ...lastLine, points: [...lastLine.points, pos.x, pos.y] }
+        
+        // Append point coordinates
+        const updatedPoints = [...lastLine.points, pos.x, pos.y]
+        
+        // Append pressure if this stroke has pressure support
+        let updatedPressures = lastLine.pressures
+        if (currentStrokeHasPressure && e.evt) {
+          const pressure = extractPressure(e.evt)
+          updatedPressures = [...(lastLine.pressures || []), pressure]
+        }
+        
+        const updatedLine = { 
+          ...lastLine, 
+          points: updatedPoints,
+          pressures: updatedPressures
+        }
         setLines([...lines.slice(0, -1), updatedLine])
         break
       }
@@ -483,7 +511,7 @@ export default function Canvas() {
     }
   }
 
-  const handleMouseUp = (_e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+  const handlePointerUp = (_e: Konva.KonvaEventObject<PointerEvent>) => {
     if (!isDrawing) return
 
     const pos = getPointerPosition()
@@ -799,20 +827,41 @@ export default function Canvas() {
   }
 
   const renderLayerLines = (layerLines: LineData[]) => (
-    layerLines.map((line, i) => (
-      <Line
-        key={`${line.tool}-${i}`}
-        points={line.points}
-        stroke={line.color}
-        strokeWidth={line.size}
-        tension={0.5}
-        lineCap="round"
-        lineJoin="round"
-        globalCompositeOperation={
-          line.tool === 'eraser' ? 'destination-out' : 'source-over'
-        }
-      />
-    ))
+    layerLines.map((line, i) => {
+      // Use PressureLine if stroke has pressure data
+      if (line.pressures && line.pressures.length > 0 && line.points.length / 2 === line.pressures.length) {
+        return (
+          <PressureLine
+            key={`${line.tool}-${i}`}
+            points={line.points}
+            pressures={line.pressures}
+            color={line.color}
+            baseSize={line.size}
+            lineCap="round"
+            lineJoin="round"
+            globalCompositeOperation={
+              line.tool === 'eraser' ? 'destination-out' : 'source-over'
+            }
+          />
+        )
+      }
+      
+      // Fallback to regular Line for strokes without pressure
+      return (
+        <Line
+          key={`${line.tool}-${i}`}
+          points={line.points}
+          stroke={line.color}
+          strokeWidth={line.size}
+          tension={0.5}
+          lineCap="round"
+          lineJoin="round"
+          globalCompositeOperation={
+            line.tool === 'eraser' ? 'destination-out' : 'source-over'
+          }
+        />
+      )
+    })
   )
 
   const renderLayerShapes = (layerShapes: ShapeData[]) => (
@@ -982,12 +1031,10 @@ export default function Canvas() {
           scaleY={zoom}
           x={panX}
           y={panY}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onTouchStart={handleMouseDown}
-          onTouchMove={handleMouseMove}
-          onTouchEnd={handleMouseUp}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
           onWheel={handleWheel}
           draggable={false}
         >
