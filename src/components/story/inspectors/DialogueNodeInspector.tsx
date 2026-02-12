@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { debounce } from 'lodash-es'
 import type { Node } from 'reactflow'
 import type { DialogueNodeData } from '../../../types/story'
 import { useStoryStore } from '../../../store/storyStore'
@@ -10,13 +11,25 @@ interface DialogueNodeInspectorProps {
 export default function DialogueNodeInspector({ node }: DialogueNodeInspectorProps) {
   const { updateNodeData, importedCharacters } = useStoryStore()
   const [showCharacterPicker, setShowCharacterPicker] = useState(false)
+  const [localText, setLocalText] = useState(node.data.text || '')
+
+  // Debounced update for text changes (300ms)
+  const debouncedUpdateText = useCallback(
+    debounce((value: string) => {
+      updateNodeData(node.id, { text: value })
+    }, 300),
+    [node.id]
+  )
 
   const handleCharacterNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateNodeData(node.id, { characterName: e.target.value })
+    const value = e.target.value.slice(0, 50) // Limit to 50 chars
+    updateNodeData(node.id, { characterName: value })
   }
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    updateNodeData(node.id, { text: e.target.value })
+    const value = e.target.value.slice(0, 500) // Limit to 500 chars
+    setLocalText(value)
+    debouncedUpdateText(value)
   }
 
   const handleExpressionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -27,10 +40,13 @@ export default function DialogueNodeInspector({ node }: DialogueNodeInspectorPro
     updateNodeData(node.id, { animation: e.target.value || undefined })
   }
 
-  // Find selected character
-  const selectedCharacter = importedCharacters.find(
-    (char) => char.id === node.data.characterId
-  )
+  // Find selected character with null safety
+  const selectedCharacter = node.data.characterId 
+    ? importedCharacters.find((char) => char.id === node.data.characterId)
+    : undefined
+    
+  const characterExpressions = selectedCharacter?.expressions ?? []
+  const characterAnimations = selectedCharacter?.animations ?? []
 
   return (
     <div className="space-y-4">
@@ -81,13 +97,17 @@ export default function DialogueNodeInspector({ node }: DialogueNodeInspectorPro
       <div>
         <label className="block text-sm font-medium text-white mb-2">
           Dialogue Text
+          <span className="text-xs text-slate-400 ml-2">
+            ({localText.length}/500)
+          </span>
         </label>
         <textarea
-          value={node.data.text || ''}
+          value={localText}
           onChange={handleTextChange}
           rows={5}
           className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
           placeholder="Enter what the character says..."
+          maxLength={500}
         />
         <p className="mt-1 text-xs text-slate-400">
           Use **bold** and *italic* for markdown formatting
@@ -95,7 +115,7 @@ export default function DialogueNodeInspector({ node }: DialogueNodeInspectorPro
       </div>
 
       {/* Expression */}
-      {selectedCharacter && selectedCharacter.expressions.length > 0 && (
+      {selectedCharacter && characterExpressions.length > 0 && (
         <div>
           <label className="block text-sm font-medium text-white mb-2">
             Expression
@@ -106,7 +126,7 @@ export default function DialogueNodeInspector({ node }: DialogueNodeInspectorPro
             className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
           >
             <option value="">Neutral</option>
-            {selectedCharacter.expressions.map((expr) => (
+            {characterExpressions.map((expr) => (
               <option key={expr} value={expr}>
                 {expr}
               </option>
@@ -116,7 +136,7 @@ export default function DialogueNodeInspector({ node }: DialogueNodeInspectorPro
       )}
 
       {/* Animation */}
-      {selectedCharacter && selectedCharacter.animations.length > 0 && (
+      {selectedCharacter && characterAnimations.length > 0 && (
         <div>
           <label className="block text-sm font-medium text-white mb-2">
             Animation
@@ -127,12 +147,21 @@ export default function DialogueNodeInspector({ node }: DialogueNodeInspectorPro
             className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
           >
             <option value="">None</option>
-            {selectedCharacter.animations.map((anim) => (
+            {characterAnimations.map((anim) => (
               <option key={anim} value={anim}>
                 {anim}
               </option>
             ))}
           </select>
+        </div>
+      )}
+      
+      {/* Show warning if character not found */}
+      {node.data.characterId && !selectedCharacter && (
+        <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg">
+          <p className="text-xs text-yellow-400">
+            ⚠️ Character not found. It may have been deleted.
+          </p>
         </div>
       )}
 

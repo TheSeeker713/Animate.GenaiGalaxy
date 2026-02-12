@@ -46,7 +46,7 @@ export default function RasterOnboarding() {
     const width = canvasType === 'custom' ? customWidth : selectedPreset.width
     const height = canvasType === 'custom' ? customHeight : selectedPreset.height
     
-    const project = createProject({
+    const result = createProject({
       name: projectName,
       type: 'raster',
       thumbnail: '',
@@ -55,7 +55,9 @@ export default function RasterOnboarding() {
       fps
     })
     
-    navigate(`/raster/${project.id}`)
+    if (result.success && result.data) {
+      navigate(`/raster/${result.data.id}`)
+    }
   }
   
   const handleOpenProject = (projectId: string) => {

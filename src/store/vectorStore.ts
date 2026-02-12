@@ -1,5 +1,17 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { immer } from 'zustand/middleware/immer'
+import { nanoid } from 'nanoid'
 import type { VectorState, VectorFrame, VectorLayer, VectorPath, Keyframe } from '../types/vector'
+import { eventBus, safeEmit } from '../utils/eventBus'
+import { validateNumber, clamp, enforceLimit } from '../utils/validators'
+
+// Limits to prevent performance issues
+const MAX_FRAMES = 300
+const MAX_LAYERS_PER_FRAME = 20
+const MAX_PATHS_PER_LAYER = 50
+const MAX_SELECTED_PATHS = 50
+const MAX_COLORS_IN_PALETTE = 20
 
 interface VectorStore extends VectorState {
   // Tool actions
@@ -54,7 +66,7 @@ interface VectorStore extends VectorState {
 }
 
 const createDefaultLayer = (): VectorLayer => ({
-  id: crypto.randomUUID(),
+  id: nanoid(),
   name: 'Layer 1',
   visible: true,
   locked: false,
@@ -64,13 +76,15 @@ const createDefaultLayer = (): VectorLayer => ({
 })
 
 const createDefaultFrame = (): VectorFrame => ({
-  id: crypto.randomUUID(),
+  id: nanoid(),
   layers: [createDefaultLayer()],
   timestamp: Date.now(),
   duration: 1000 / 24, // 24fps default
 })
 
-export const useVectorStore = create<VectorStore>((set) => ({
+export const useVectorStore = create<VectorStore>()(
+  persist(
+    immer((set, get) => ({
   // Initial state
   currentTool: 'select',
   selectedPathIds: [],
@@ -93,79 +107,137 @@ export const useVectorStore = create<VectorStore>((set) => ({
     '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF',
     '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080',
   ],
-
+  
   // Tool actions
-  setTool: (tool) => set({ currentTool: tool }),
-  setStrokeColor: (color) => set({ strokeColor: color }),
-  setFillColor: (color) => set({ fillColor: color }),
-  setStrokeWidth: (width) => set({ strokeWidth: width }),
-
+  setTool: (tool) => {
+    // Prevent tool switches during playback
+    if (get().isPlaying) {
+      console.warn('Cannot switch tools during playback')
+      return
+    }
+    set((draft) => { draft.currentTool = tool })
+  },
+  
+  setStrokeColor: (color) => set((draft) => { draft.strokeColor = color }),
+  setFillColor: (color) => set((draft) => { draft.fillColor = color }),
+  setStrokeWidth: (width) => {
+    const validated = validateNumber(width, 1)
+    set((draft) => { draft.strokeWidth = validated })
+  },
+  
   // Selection actions
-  selectPath: (pathId, addToSelection = false) => set((state) => {
-    if (addToSelection) {
-      return {
-        selectedPathIds: state.selectedPathIds.includes(pathId)
-          ? state.selectedPathIds.filter(id => id !== pathId)
-          : [...state.selectedPathIds, pathId],
+  selectPath: (pathId, addToSelection = false) => {
+    set((draft) => {
+      if (addToSelection) {
+        if (draft.selectedPathIds.includes(pathId)) {
+          draft.selectedPathIds = draft.selectedPathIds.filter(id => id !== pathId)
+        } else {
+          // Enforce selection limit
+          if (draft.selectedPathIds.length < MAX_SELECTED_PATHS) {
+            draft.selectedPathIds.push(pathId)
+          } else {
+            console.warn(`Selection limit reached (${MAX_SELECTED_PATHS})`)
+          }
+        }
+      } else {
+        draft.selectedPathIds = [pathId]
       }
-    }
-    return { selectedPathIds: [pathId] }
-  }),
-
-  clearSelection: () => set({ selectedPathIds: [] }),
-
+    })
+  },
+  
+  clearSelection: () => set((draft) => { draft.selectedPathIds = [] }),
+  
   // Frame actions
-  setCurrentFrame: (index) => set({ currentFrameIndex: index }),
+  setCurrentFrame: (index) => {
+    const state = get()
+    const validIndex = clamp(index, 0, state.frames.length - 1)
+    set((draft) => { draft.currentFrameIndex = validIndex })
+  },
 
-  addFrame: () => set((state) => {
+  addFrame: () => {
+    const state = get()
+    
+    // Enforce frame limit
+    if (state.frames.length >= MAX_FRAMES) {
+      console.error(`Frame limit reached (${MAX_FRAMES})`)
+      alert(`Maximum ${MAX_FRAMES} frames allowed.`)
+      return
+    }
+    
     const newFrame = createDefaultFrame()
-    return {
-      frames: [...state.frames, newFrame],
-      currentFrameIndex: state.frames.length,
-    }
-  }),
+    set((draft) => {
+      draft.frames.push(newFrame)
+      draft.currentFrameIndex = draft.frames.length - 1
+    })
+  },
 
-  deleteFrame: (index) => set((state) => {
-    if (state.frames.length <= 1) return state
-    const newFrames = state.frames.filter((_, i) => i !== index)
-    return {
-      frames: newFrames,
-      currentFrameIndex: Math.min(state.currentFrameIndex, newFrames.length - 1),
+  deleteFrame: (index) => {
+    const state = get()
+    if (state.frames.length <= 1) {
+      console.warn('Cannot delete the only frame')
+      return
     }
-  }),
+    
+    set((draft) => {
+      draft.frames.splice(index, 1)
+      draft.currentFrameIndex = Math.min(draft.currentFrameIndex, draft.frames.length - 1)
+    })
+  },
 
-  duplicateFrame: (index) => set((state) => {
+  duplicateFrame: (index) => {
+    const state = get()
+    
+    // Enforce frame limit
+    if (state.frames.length >= MAX_FRAMES) {
+      console.error(`Frame limit reached (${MAX_FRAMES})`)
+      alert(`Maximum ${MAX_FRAMES} frames allowed.`)
+      return
+    }
+    
     const frameToDuplicate = state.frames[index]
-    const newFrame: VectorFrame = {
-      id: crypto.randomUUID(),
+    if (!frameToDuplicate) return
+    
+    const duplicatedFrame: VectorFrame = {
+      id: nanoid(),
       layers: frameToDuplicate.layers.map(layer => ({
         ...layer,
-        id: crypto.randomUUID(),
-        paths: layer.paths.map(path => ({
-          ...path,
-          id: crypto.randomUUID(),
-        })),
+        id: nanoid(),
+        paths: layer.paths.map(path => ({...path, id: nanoid()}))
       })),
       timestamp: Date.now(),
-      duration: frameToDuplicate.duration,
+      duration: frameToDuplicate.duration
     }
-    const newFrames = [...state.frames]
-    newFrames.splice(index + 1, 0, newFrame)
-    return {
-      frames: newFrames,
-      currentFrameIndex: index + 1,
-    }
-  }),
-
+    
+    set((draft) => {
+      draft.frames.splice(index + 1, 0, duplicatedFrame)
+      draft.currentFrameIndex = index + 1
+    })
+  },
+  
   // Layer actions
-  setCurrentLayer: (index) => set({ currentLayerIndex: index }),
+  setCurrentLayer: (index) => {
+    const state = get()
+    const frame = state.frames[state.currentFrameIndex]
+    if (frame) {
+      const validIndex = clamp(index, 0, frame.layers.length - 1)
+      set((draft) => { draft.currentLayerIndex = validIndex })
+    }
+  },
 
-  addLayer: (frameIndex) => set((state) => {
+  addLayer: (frameIndex) => {
+    const state = get()
     const frame = state.frames[frameIndex]
-    if (frame.layers.length >= 10) return state
+    if (!frame) return
+    
+    // Enforce layer limit
+    if (frame.layers.length >= MAX_LAYERS_PER_FRAME) {
+      console.error(`Layer limit reached (${MAX_LAYERS_PER_FRAME})`)
+      alert(`Maximum ${MAX_LAYERS_PER_FRAME} layers per frame allowed.`)
+      return
+    }
 
     const newLayer: VectorLayer = {
-      id: crypto.randomUUID(),
+      id: nanoid(),
       name: `Layer ${frame.layers.length + 1}`,
       visible: true,
       locked: false,
@@ -174,132 +246,183 @@ export const useVectorStore = create<VectorStore>((set) => ({
       keyframes: [],
     }
 
-    const newFrames = [...state.frames]
-    newFrames[frameIndex] = {
-      ...frame,
-      layers: [...frame.layers, newLayer],
-    }
+    set((draft) => {
+      draft.frames[frameIndex].layers.push(newLayer)
+    })
+  },
 
-    return { frames: newFrames }
-  }),
-
-  deleteLayer: (frameIndex, layerId) => set((state) => {
+  deleteLayer: (frameIndex, layerId) => {
+    const state = get()
     const frame = state.frames[frameIndex]
-    if (frame.layers.length <= 1) return state
-
-    const newFrames = [...state.frames]
-    newFrames[frameIndex] = {
-      ...frame,
-      layers: frame.layers.filter(l => l.id !== layerId),
+    if (!frame || frame.layers.length <= 1) {
+      console.warn('Cannot delete the only layer')
+      return
     }
 
-    return { frames: newFrames }
-  }),
+    set((draft) => {
+      draft.frames[frameIndex].layers = draft.frames[frameIndex].layers.filter(
+        l => l.id !== layerId
+      )
+    })
+  },
 
-  updateLayer: (frameIndex, layerId, updates) => set((state) => {
-    const newFrames = [...state.frames]
-    const frame = newFrames[frameIndex]
-
-    newFrames[frameIndex] = {
-      ...frame,
-      layers: frame.layers.map(layer =>
-        layer.id === layerId ? { ...layer, ...updates } : layer
-      ),
+  updateLayer: (frameIndex, layerId, updates) => {
+    // Validate opacity if provided
+    if (updates.opacity !== undefined) {
+      updates.opacity = clamp(validateNumber(updates.opacity, 1), 0, 1)
     }
-
-    return { frames: newFrames }
-  }),
-
+    
+    set((draft) => {
+      const layer = draft.frames[frameIndex]?.layers.find(l => l.id === layerId)
+      if (layer) {
+        Object.assign(layer, updates)
+      }
+    })
+  },
+  
   // Path actions
-  addPath: (frameIndex, layerIndex, path) => set((state) => {
-    const newFrames = [...state.frames]
-    const frame = newFrames[frameIndex]
-    const layer = frame.layers[layerIndex]
-
-    frame.layers[layerIndex] = {
-      ...layer,
-      paths: [...layer.paths, path],
+  addPath: (frameIndex, layerIndex, path) => {
+    const state = get()
+    const layer = state.frames[frameIndex]?.layers[layerIndex]
+    if (!layer) return
+    
+    // Enforce path limit
+    if (layer.paths.length >= MAX_PATHS_PER_LAYER) {
+      console.error(`Path limit reached (${MAX_PATHS_PER_LAYER})`)
+      alert(`Maximum ${MAX_PATHS_PER_LAYER} paths per layer allowed.`)
+      return
     }
+    
+    // Ensure unique ID
+    path.id = path.id || nanoid()
+    
+    set((draft) => {
+      draft.frames[frameIndex].layers[layerIndex].paths.push(path)
+    })
+  },
 
-    return { frames: newFrames }
-  }),
+  updatePath: (frameIndex, layerIndex, pathId, updates) => {
+    set((draft) => {
+      const path = draft.frames[frameIndex]?.layers[layerIndex]?.paths.find(
+        p => p.id === pathId
+      )
+      if (path) {
+        Object.assign(path, updates)
+      }
+    })
+  },
 
-  updatePath: (frameIndex, layerIndex, pathId, updates) => set((state) => {
-    const newFrames = [...state.frames]
-    const frame = newFrames[frameIndex]
-    const layer = frame.layers[layerIndex]
-
-    frame.layers[layerIndex] = {
-      ...layer,
-      paths: layer.paths.map(path =>
-        path.id === pathId ? { ...path, ...updates } : path
-      ),
-    }
-
-    return { frames: newFrames }
-  }),
-
-  deletePath: (frameIndex, layerIndex, pathId) => set((state) => {
-    const newFrames = [...state.frames]
-    const frame = newFrames[frameIndex]
-    const layer = frame.layers[layerIndex]
-
-    frame.layers[layerIndex] = {
-      ...layer,
-      paths: layer.paths.filter(p => p.id !== pathId),
-    }
-
-    return { frames: newFrames, selectedPathIds: state.selectedPathIds.filter(id => id !== pathId) }
-  }),
-
+  deletePath: (frameIndex, layerIndex, pathId) => {
+    set((draft) => {
+      const layer = draft.frames[frameIndex]?.layers[layerIndex]
+      if (layer) {
+        layer.paths = layer.paths.filter(p => p.id !== pathId)
+      }
+      draft.selectedPathIds = draft.selectedPathIds.filter(id => id !== pathId)
+    })
+  },
+  
   // Keyframe actions
-  addKeyframe: (frameIndex, layerIndex, keyframe) => set((state) => {
-    const newFrames = [...state.frames]
-    const frame = newFrames[frameIndex]
-    const layer = frame.layers[layerIndex]
+  addKeyframe: (frameIndex, layerIndex, keyframe) => {
+    set((draft) => {
+      const layer = draft.frames[frameIndex]?.layers[layerIndex]
+      if (layer) {
+        layer.keyframes.push(keyframe)
+        layer.keyframes.sort((a, b) => a.time - b.time)
+      }
+    })
+  },
 
-    frame.layers[layerIndex] = {
-      ...layer,
-      keyframes: [...layer.keyframes, keyframe].sort((a, b) => a.time - b.time),
-    }
-
-    return { frames: newFrames }
-  }),
-
-  deleteKeyframe: (frameIndex, layerIndex, time) => set((state) => {
-    const newFrames = [...state.frames]
-    const frame = newFrames[frameIndex]
-    const layer = frame.layers[layerIndex]
-
-    frame.layers[layerIndex] = {
-      ...layer,
-      keyframes: layer.keyframes.filter(k => k.time !== time),
-    }
-
-    return { frames: newFrames }
-  }),
+  deleteKeyframe: (frameIndex, layerIndex, time) => {
+    set((draft) => {
+      const layer = draft.frames[frameIndex]?.layers[layerIndex]
+      if (layer) {
+        layer.keyframes = layer.keyframes.filter(k => k.time !== time)
+      }
+    })
+  },
 
   // Playback actions
-  setFps: (fps) => set({ fps }),
-  togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
-  setPlaying: (playing) => set({ isPlaying: playing }),
+  setFps: (fps) => set((draft) => { 
+    draft.fps = clamp(validateNumber(fps, 24), 1, 120)
+  }),
+  
+  togglePlay: () => set((draft) => { 
+    draft.isPlaying = !draft.isPlaying
+  }),
+  
+  setPlaying: (playing) => set((draft) => { 
+    draft.isPlaying = playing
+  }),
 
   // View actions
-  setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(10, zoom)) }),
-  setPan: (x, y) => set({ panX: x, panY: y }),
-  resetView: () => set({ zoom: 1, panX: 0, panY: 0 }),
-  toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
-  setGridSize: (size) => set({ gridSize: size }),
+  setZoom: (zoom) => set((draft) => { 
+    const validZoom = validateNumber(zoom, 1)
+    draft.zoom = clamp(validZoom, 0.1, 10)
+  }),
+  
+  setPan: (x, y) => set((draft) => { 
+    draft.panX = validateNumber(x, 0)
+    draft.panY = validateNumber(y, 0)
+  }),
+  
+  resetView: () => set((draft) => { 
+    draft.zoom = 1
+    draft.panX = 0
+    draft.panY = 0
+  }),
+  
+  toggleGrid: () => set((draft) => { 
+    draft.showGrid = !draft.showGrid
+  }),
+  
+  setGridSize: (size) => set((draft) => { 
+    draft.gridSize = clamp(validateNumber(size, 20), 5, 100)
+  }),
 
   // Mode toggles
-  toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
-  toggleSnapToGrid: () => set((state) => ({ snapToGrid: !state.snapToGrid })),
+  toggleDarkMode: () => set((draft) => { 
+    draft.darkMode = !draft.darkMode
+  }),
+  
+  toggleSnapToGrid: () => set((draft) => { 
+    draft.snapToGrid = !draft.snapToGrid
+  }),
 
   // Color palette
-  addColorToPalette: (color) => set((state) => {
-    if (state.colorPalette.includes(color)) return state
-    return {
-      colorPalette: [...state.colorPalette, color].slice(0, 20),
-    }
-  }),
-}))
+  addColorToPalette: (color) => {
+    const state = get()
+    if (state.colorPalette.includes(color)) return
+    
+    set((draft) => {
+      draft.colorPalette.push(color)
+      draft.colorPalette = enforceLimit(
+        draft.colorPalette,
+        MAX_COLORS_IN_PALETTE,
+        'color palette'
+      )
+    })
+  },
+})),
+  {
+    name: 'genai-galaxy-vector',
+    version: 1,
+  }
+)
+)
+
+// Subscribe to cross-store events
+eventBus.on('projectDeleted', () => {
+  useVectorStore.setState({
+    currentTool: 'select',
+    selectedPathIds: [],
+    currentFrameIndex: 0,
+    currentLayerIndex: 0,
+    isPlaying: false,
+    frames: [createDefaultFrame()],
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+  })
+  safeEmit('storeReset', 'vector')
+})

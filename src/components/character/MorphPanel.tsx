@@ -7,7 +7,8 @@ export default function MorphPanel() {
     baseTemplate,
     selectedMorphCategory,
     setSelectedMorphCategory,
-    updateMorphState
+    updateMorphState,
+    updateCharacter
   } = useCharacterStore()
 
   if (!currentCharacter || !baseTemplate) {
@@ -19,7 +20,7 @@ export default function MorphPanel() {
     )
   }
 
-  const morphTargets = baseTemplate.morphTargets || []
+  const morphTargets = baseTemplate.morphTargets ?? [] // Use nullish coalescing
   
   // Group morphs by category
   const morphsByCategory = morphTargets.reduce((acc, morph) => {
@@ -55,16 +56,30 @@ export default function MorphPanel() {
   }
 
   const randomizeCategory = () => {
+    // Batch update all morphs at once for better performance
+    const newMorphState = { ...currentCharacter.morphState }
     activeMorphs.forEach(morph => {
       const range = morph.maxValue - morph.minValue
       const randomValue = morph.minValue + Math.random() * range
-      updateMorphState(morph.id, randomValue)
+      newMorphState[morph.id] = randomValue
+    })
+    
+    updateCharacter({
+      ...currentCharacter,
+      morphState: newMorphState
     })
   }
 
   const resetCategory = () => {
+    // Batch update all morphs at once
+    const newMorphState = { ...currentCharacter.morphState }
     activeMorphs.forEach(morph => {
-      updateMorphState(morph.id, morph.defaultValue)
+      newMorphState[morph.id] = morph.defaultValue
+    })
+    
+    updateCharacter({
+      ...currentCharacter,
+      morphState: newMorphState
     })
   }
 
@@ -173,19 +188,27 @@ export default function MorphPanel() {
           <label className="text-sm font-medium mb-2 block">Quick Presets</label>
           <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={() => activeMorphs.forEach(m => updateMorphState(m.id, m.minValue))}
+              onClick={() => {
+                const newMorphState = { ...currentCharacter.morphState }
+                activeMorphs.forEach(m => { newMorphState[m.id] = m.minValue })
+                updateCharacter({ ...currentCharacter, morphState: newMorphState })
+              }}
               className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm transition"
             >
               Minimum
             </button>
             <button
-              onClick={() => activeMorphs.forEach(m => updateMorphState(m.id, m.maxValue))}
+              onClick={() => {
+                const newMorphState = { ...currentCharacter.morphState }
+                activeMorphs.forEach(m => { newMorphState[m.id] = m.maxValue })
+                updateCharacter({ ...currentCharacter, morphState: newMorphState })
+              }}
               className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm transition"
             >
               Maximum
             </button>
             <button
-              onClick={() => activeMorphs.forEach(m => updateMorphState(m.id, m.defaultValue))}
+              onClick={resetCategory}
               className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm transition col-span-2"
             >
               Reset All

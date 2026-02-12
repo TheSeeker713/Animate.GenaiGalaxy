@@ -33,13 +33,13 @@ export default function RasterStudio() {
   // Load project on mount
   useEffect(() => {
     if (projectId) {
-      const project = getProjectById(projectId)
-      if (project) {
-        setCurrentProject(project)
+      const result = getProjectById(projectId)
+      if (result.success && result.data) {
+        setCurrentProject(result.data)
         applyProjectSettings({
-          width: project.width,
-          height: project.height,
-          fps: project.fps,
+          width: result.data.width,
+          height: result.data.height,
+          fps: result.data.fps,
         })
       } else {
         // Project not found, redirect to dashboard

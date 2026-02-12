@@ -320,7 +320,7 @@ export interface CharacterLayer {
 
 export interface Skeleton {
   bones: Bone[]
-  rootBoneId: string
+  rootBoneId: string | null
   ikChains: IKChain[]
   constraints: BoneConstraint[]
 }

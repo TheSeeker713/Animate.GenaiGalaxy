@@ -1,5 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { immer } from 'zustand/middleware/immer'
+import { eventBus, safeEmit } from '../utils/eventBus'
+import { ProjectSchema } from '../utils/validators'
+import { checkStorageQuota } from '../utils/storageManager'
+import { merge } from 'lodash-es'
 
 export type ProjectType = 'raster' | 'vector' | 'character' | 'story'
 
@@ -15,70 +20,165 @@ export interface Project {
   modifiedAt: string
 }
 
+export interface ProjectStoreResult<T> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
 interface ProjectStore {
   projects: Project[]
   currentProject: Project | null
   
   // Actions
-  createProject: (project: Omit<Project, 'id' | 'createdAt' | 'modifiedAt'>) => Project
-  updateProject: (id: string, updates: Partial<Project>) => void
-  deleteProject: (id: string) => void
+  createProject: (project: Omit<Project, 'id' | 'createdAt' | 'modifiedAt'>) => ProjectStoreResult<Project>
+  updateProject: (id: string, updates: Partial<Project>) => ProjectStoreResult<void>
+  deleteProject: (id: string) => ProjectStoreResult<void>
   setCurrentProject: (project: Project | null) => void
-  getProjectById: (id: string) => Project | undefined
+  getProjectById: (id: string) => ProjectStoreResult<Project>
 }
 
 export const useProjectStore = create<ProjectStore>()(
   persist(
-    (set, get) => ({
+    immer((set, get) => ({
       projects: [],
       currentProject: null,
 
       createProject: (projectData) => {
-        const newProject: Project = {
-          ...projectData,
-          id: crypto.randomUUID(),
-          createdAt: new Date().toISOString(),
-          modifiedAt: new Date().toISOString(),
+        try {
+          // Check storage quota before creating
+          const quota = checkStorageQuota()
+          if (quota.warning) {
+            safeEmit('quotaWarning', { used: quota.used, limit: 5 * 1024 * 1024 })
+          }
+
+          const timestamp = new Date().toISOString()
+          const newProject: Project = {
+            ...projectData,
+            id: `${Date.now()}-${crypto.randomUUID()}`, // Prefix with timestamp to avoid collisions
+            createdAt: timestamp,
+            modifiedAt: timestamp,
+          }
+
+          // Validate project data
+          const validated = ProjectSchema.parse(newProject)
+
+          set((draft) => {
+            draft.projects.unshift(validated)
+          })
+
+          safeEmit('projectSwitched', validated.id)
+          return { success: true, data: validated }
+        } catch (error) {
+          console.error('Failed to create project:', error)
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to create project',
+          }
         }
-
-        set((state) => ({
-          projects: [newProject, ...state.projects],
-        }))
-
-        return newProject
       },
 
       updateProject: (id, updates) => {
-        set((state) => ({
-          projects: state.projects.map((p) =>
-            p.id === id
-              ? { ...p, ...updates, modifiedAt: new Date().toISOString() }
-              : p
-          ),
-          currentProject:
-            state.currentProject?.id === id
-              ? { ...state.currentProject, ...updates, modifiedAt: new Date().toISOString() }
-              : state.currentProject,
-        }))
+        try {
+          const project = get().projects.find((p) => p.id === id)
+          if (!project) {
+            return { success: false, error: 'Project not found' }
+          }
+
+          // Use deep merge for nested updates
+          const merged = merge({}, project, updates, {
+            modifiedAt: new Date().toISOString(),
+          })
+
+          // Validate merged data
+          const validated = ProjectSchema.parse(merged)
+
+          set((draft) => {
+            const index = draft.projects.findIndex((p) => p.id === id)
+            if (index !== -1) {
+              draft.projects[index] = validated
+            }
+            if (draft.currentProject?.id === id) {
+              draft.currentProject = validated
+            }
+          })
+
+          return { success: true }
+        } catch (error) {
+          console.error('Failed to update project:', error)
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to update project',
+          }
+        }
       },
 
       deleteProject: (id) => {
-        set((state) => ({
-          projects: state.projects.filter((p) => p.id !== id),
-          currentProject: state.currentProject?.id === id ? null : state.currentProject,
-        }))
+        try {
+          const exists = get().projects.some((p) => p.id === id)
+          if (!exists) {
+            return { success: false, error: 'Project not found' }
+          }
+
+          set((draft) => {
+            draft.projects = draft.projects.filter((p) => p.id !== id)
+            if (draft.currentProject?.id === id) {
+              draft.currentProject = null
+            }
+          })
+
+          // Notify other stores to reset their state
+          safeEmit('projectDeleted', id)
+          return { success: true }
+        } catch (error) {
+          console.error('Failed to delete project:', error)
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to delete project',
+          }
+        }
       },
 
       setCurrentProject: (project) => {
-        set({ currentProject: project })
+        set((draft) => {
+          draft.currentProject = project
+        })
+        if (project) {
+          safeEmit('projectSwitched', project.id)
+        }
       },
 
       getProjectById: (id) => {
-        return get().projects.find((p) => p.id === id)
+        const project = get().projects.find((p) => p.id === id)
+        if (!project) {
+          return { success: false, error: 'Project not found' }
+        }
+        return { success: true, data: project }
       },
-    }),
+    })),
     {
       name: 'genai-galaxy-projects',
+      version: 1,
+      onRehydrateStorage: () => {
+        return (state, error) => {
+          if (error) {
+            console.error('Failed to rehydrate projects:', error)
+          } else if (state) {
+            // Check quota on load
+            const quota = checkStorageQuota()
+            if (quota.warning) {
+              console.warn('Storage quota warning on rehydrate')
+            }
+          }
+        }
+      },
     }
   )
 )
+
+// Subscribe to cross-store events
+eventBus.on('storeReset', (storeName) => {
+  if (storeName === 'all' || storeName === 'projects') {
+    useProjectStore.setState({ projects: [], currentProject: null })
+  }
+})

@@ -14,7 +14,7 @@ export default function Dashboard() {
         navigate('/raster')
         break
       case 'vector':
-        const project = createProject({
+        const result = createProject({
           name: `New ${type} Project`,
           type,
           thumbnail: '',
@@ -22,7 +22,9 @@ export default function Dashboard() {
           height: 1080,
           fps: 24,
         })
-        navigate(`/vector/${project.id}`)
+        if (result.success && result.data) {
+          navigate(`/vector/${result.data.id}`)
+        }
         break
       case 'character':
         navigate('/character/new')

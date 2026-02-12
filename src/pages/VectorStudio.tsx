@@ -15,9 +15,9 @@ export default function VectorStudio() {
   // Load project on mount
   useEffect(() => {
     if (projectId) {
-      const project = getProjectById(projectId)
-      if (project) {
-        setCurrentProject(project)
+      const result = getProjectById(projectId)
+      if (result.success && result.data) {
+        setCurrentProject(result.data)
       } else {
         navigate('/')
       }
