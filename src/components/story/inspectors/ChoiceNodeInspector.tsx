@@ -119,12 +119,12 @@ export default function ChoiceNodeInspector({ node }: ChoiceNodeInspectorProps) 
               </div>
               <input
                 type="text"
-                value={choice.text}
+                value={choice.text || ''}
                 onChange={(e) => handleChoiceTextChange(choice.id, e.target.value)}
                 className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-purple-500"
                 placeholder={`Option ${index + 1}`}
                 maxLength={80}
-                title={`${choice.text.length}/80 characters`}
+                title={`${(choice.text || '').length}/80 characters`}
               />
               <button
                 onClick={() => removeChoice(choice.id)}

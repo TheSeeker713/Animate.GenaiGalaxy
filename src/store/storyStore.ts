@@ -8,18 +8,25 @@ import type {
   StoryConnection, 
   NodeData, 
   NodeType,
-  ImportedCharacter 
+  ImportedCharacter,
+  StoryCharacter,
+  StoryLocation,
+  StoryItem,
+  MediaAsset,
+  Chapter,
 } from '../types/story'
 import type { Node, Edge } from 'reactflow'
 import { eventBus, safeEmit } from '../utils/eventBus'
 import { sanitizeText, validateCondition, enforceLimit } from '../utils/validators'
-import { saveToIndexedDB, loadFromIndexedDB } from '../utils/storageManager'
+import { saveFullStory, loadFullStory } from '../utils/storyDb'
+import { calculateStoryWordCount, calculateEstimatedPlaytime, findNodesUsingCharacter, findNodesUsingLocation } from '../types/storyAssets'
 
 // Limits to prevent performance issues
-const MAX_NODES = 500
-const MAX_EDGES = 500
+const MAX_NODES = 5000  // Increased with viewport virtualization
+const MAX_EDGES = 5000
 const MAX_HISTORY = 20
 const MAX_CHOICES = 8
+const SOFT_WARNING_NODES = 1000  // Warn at 1000 nodes
 
 interface StoryStore {
   // Core state
@@ -28,13 +35,23 @@ interface StoryStore {
   edges: Edge[]
   variables: Record<string, any>
   
+  // Asset Databases (new)
+  characters: StoryCharacter[]
+  locations: StoryLocation[]
+  items: StoryItem[]
+  mediaLibrary: MediaAsset[]
+  chapters: Chapter[]
+  
+  // Organization (new)
+  tags: string[]
+  
   // UI state
   selectedNodeId: string | null
   inspectorOpen: boolean
   previewMode: boolean
   previewStartNodeId: string | null
   
-  // Character integration
+  // Character integration (legacy)
   importedCharacters: ImportedCharacter[]
   
   // Playback state (for preview)
@@ -62,8 +79,32 @@ interface StoryStore {
   setSelectedNodeId: (nodeId: string | null) => void
   toggleInspector: () => void
   
-  // Actions - Character Integration
+  // Actions - Character Integration (legacy)
   importCharacter: (character: ImportedCharacter) => void
+  
+  // Actions - Asset Management (new)
+  addCharacter: (character: Omit<StoryCharacter, 'id' | 'appearances'>) => void
+  updateCharacter: (id: string, updates: Partial<StoryCharacter>) => void
+  deleteCharacter: (id: string) => void
+  
+  addLocation: (location: Omit<StoryLocation, 'id' | 'sceneCount'>) => void
+  updateLocation: (id: string, updates: Partial<StoryLocation>) => void
+  deleteLocation: (id: string) => void
+  
+  addItem: (item: Omit<StoryItem, 'id'>) => void
+  updateItem: (id: string, updates: Partial<StoryItem>) => void
+  deleteItem: (id: string) => void
+  
+  addMediaAsset: (asset: MediaAsset) => void
+  deleteMediaAsset: (id: string) => void
+  
+  addChapter: (chapter: Omit<Chapter, 'id'>) => void
+  updateChapter: (id: string, updates: Partial<Chapter>) => void
+  deleteChapter: (id: string) => void
+  assignNodeToChapter: (nodeId: string, chapterId: string) => void
+  
+  updateStoryMetadata: (updates: Partial<Pick<Story, 'name' | 'description' | 'tags' | 'genre' | 'status' | 'outline' | 'notes'>>) => void
+  refreshAnalytics: () => void
   
   // Actions - Preview
   startPreview: (startNodeId?: string) => void
@@ -145,6 +186,15 @@ export const useStoryStore = create<StoryStore>()(
   nodes: [],
   edges: [],
   variables: {},
+  
+  // Asset databases (new)
+  characters: [],
+  locations: [],
+  items: [],
+  mediaLibrary: [],
+  chapters: [],
+  tags: [],
+  
   selectedNodeId: null,
   inspectorOpen: true,
   previewMode: false,
@@ -167,7 +217,12 @@ export const useStoryStore = create<StoryStore>()(
       return
     }
     
-    // Enforce node limit
+    // Soft warning at 1000 nodes (no hard limit)
+    if (state.nodes.length >= SOFT_WARNING_NODES && state.nodes.length < SOFT_WARNING_NODES + 10) {
+      console.warn(`Large story: ${state.nodes.length} nodes. Performance may degrade.`)
+    }
+    
+    // Hard limit at MAX_NODES
     if (state.nodes.length >= MAX_NODES) {
       console.error(`Node limit reached (${MAX_NODES})`)
       alert(`Maximum ${MAX_NODES} nodes allowed. Please delete some nodes first.`)
@@ -307,10 +362,199 @@ export const useStoryStore = create<StoryStore>()(
     })
   },
   
-  // Character Integration
+  // Character Integration (legacy)
   importCharacter: (character) => {
     set((draft) => {
       draft.importedCharacters.push(character)
+    })
+  },
+  
+  // Asset Management - Characters
+  addCharacter: (character) => {
+    set((draft) => {
+      const newCharacter: StoryCharacter = {
+        ...character,
+        id: `char-${nanoid(8)}`,
+        appearances: [],
+      }
+      draft.characters.push(newCharacter)
+    })
+  },
+  
+  updateCharacter: (id, updates) => {
+    set((draft) => {
+      const character = draft.characters.find(c => c.id === id)
+      if (character) {
+        Object.assign(character, updates)
+        
+        // Refresh appearances if needed
+        if (updates.id || updates.name) {
+          character.appearances = findNodesUsingCharacter(draft.nodes as StoryNode[], id)
+        }
+      }
+    })
+  },
+  
+  deleteCharacter: (id) => {
+    const { nodes } = get()
+    const usageCount = findNodesUsingCharacter(nodes as StoryNode[], id).length
+    
+    if (usageCount > 0) {
+      if (!confirm(`This character is used in ${usageCount} node(s). Delete anyway? Nodes will need to be updated manually.`)) {
+        return
+      }
+    }
+    
+    set((draft) => {
+      draft.characters = draft.characters.filter(c => c.id !== id)
+    })
+  },
+  
+  // Asset Management - Locations
+  addLocation: (location) => {
+    set((draft) => {
+      const newLocation: StoryLocation = {
+        ...location,
+        id: `loc-${nanoid(8)}`,
+        sceneCount: 0,
+      }
+      draft.locations.push(newLocation)
+    })
+  },
+  
+  updateLocation: (id, updates) => {
+    set((draft) => {
+      const location = draft.locations.find(l => l.id === id)
+      if (location) {
+        Object.assign(location, updates)
+        
+        // Refresh scene count
+        location.sceneCount = findNodesUsingLocation(draft.nodes as StoryNode[], id).length
+      }
+    })
+  },
+  
+  deleteLocation: (id) => {
+    const { nodes } = get()
+    const usageCount = findNodesUsingLocation(nodes as StoryNode[], id).length
+    
+    if (usageCount > 0) {
+      if (!confirm(`This location is used in ${usageCount} node(s). Delete anyway?`)) {
+        return
+      }
+    }
+    
+    set((draft) => {
+      draft.locations = draft.locations.filter(l => l.id !== id)
+    })
+  },
+  
+  // Asset Management - Items
+  addItem: (item) => {
+    set((draft) => {
+      const newItem: StoryItem = {
+        ...item,
+        id: `item-${nanoid(8)}`,
+      }
+      draft.items.push(newItem)
+    })
+  },
+  
+  updateItem: (id, updates) => {
+    set((draft) => {
+      const item = draft.items.find(i => i.id === id)
+      if (item) {
+        Object.assign(item, updates)
+      }
+    })
+  },
+  
+  deleteItem: (id) => {
+    set((draft) => {
+      draft.items = draft.items.filter(i => i.id !== id)
+    })
+  },
+  
+  // Asset Management - Media
+  addMediaAsset: (asset) => {
+    set((draft) => {
+      draft.mediaLibrary.push(asset)
+    })
+  },
+  
+  deleteMediaAsset: (id) => {
+    set((draft) => {
+      draft.mediaLibrary = draft.mediaLibrary.filter(m => m.id !== id)
+    })
+  },
+  
+  // Asset Management - Chapters
+  addChapter: (chapter) => {
+    set((draft) => {
+      const newChapter: Chapter = {
+        ...chapter,
+        id: `chapter-${nanoid(8)}`,
+      }
+      draft.chapters.push(newChapter)
+    })
+  },
+  
+  updateChapter: (id, updates) => {
+    set((draft) => {
+      const chapter = draft.chapters.find(c => c.id === id)
+      if (chapter) {
+        Object.assign(chapter, updates)
+      }
+    })
+  },
+  
+  deleteChapter: (id) => {
+    set((draft) => {
+      draft.chapters = draft.chapters.filter(c => c.id !== id)
+    })
+  },
+  
+  assignNodeToChapter: (nodeId, chapterId) => {
+    set((draft) => {
+      // Remove node from all chapters
+      draft.chapters.forEach(ch => {
+        ch.nodeIds = ch.nodeIds.filter(id => id !== nodeId)
+      })
+      
+      // Add to new chapter
+      const chapter = draft.chapters.find(c => c.id === chapterId)
+      if (chapter && !chapter.nodeIds.includes(nodeId)) {
+        chapter.nodeIds.push(nodeId)
+      }
+    })
+  },
+  
+  // Story Metadata
+  updateStoryMetadata: (updates) => {
+    set((draft) => {
+      if (draft.currentStory) {
+        Object.assign(draft.currentStory, updates)
+        draft.currentStory.updatedAt = new Date().toISOString()
+        
+        // Update tags at root level
+        if (updates.tags) {
+          draft.tags = updates.tags
+        }
+      }
+    })
+  },
+  
+  // Analytics
+  refreshAnalytics: () => {
+    const { nodes } = get()
+    const wordCount = calculateStoryWordCount(nodes as StoryNode[])
+    const estimatedPlaytime = calculateEstimatedPlaytime(wordCount)
+    
+    set((draft) => {
+      if (draft.currentStory) {
+        draft.currentStory.wordCount = wordCount
+        draft.currentStory.estimatedPlaytime = estimatedPlaytime
+      }
     })
   },
   
@@ -394,6 +638,19 @@ export const useStoryStore = create<StoryStore>()(
       connections: [],
       variables: {},
       importedCharacters: [],
+      
+      // New fields
+      characters: [],
+      locations: [],
+      items: [],
+      mediaLibrary: [],
+      chapters: [],
+      tags: [],
+      genre: '',
+      status: 'draft',
+      outline: '',
+      notes: '',
+      
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     }
@@ -412,6 +669,12 @@ export const useStoryStore = create<StoryStore>()(
       draft.edges = []
       draft.variables = {}
       draft.importedCharacters = []
+      draft.characters = []
+      draft.locations = []
+      draft.items = []
+      draft.mediaLibrary = []
+      draft.chapters = []
+      draft.tags = []
       draft.selectedNodeId = null
       draft.history = []
       draft.historyIndex = -1
@@ -419,7 +682,19 @@ export const useStoryStore = create<StoryStore>()(
   },
   
   saveStory: async () => {
-    const { currentStory, nodes, edges, variables, importedCharacters } = get()
+    const { 
+      currentStory, 
+      nodes, 
+      edges, 
+      variables, 
+      importedCharacters,
+      characters,
+      locations,
+      items,
+      mediaLibrary,
+      chapters,
+      tags,
+    } = get()
     
     if (!currentStory) {
       console.warn('No current story to save')
@@ -433,62 +708,60 @@ export const useStoryStore = create<StoryStore>()(
         connections: edges as StoryConnection[],
         variables,
         importedCharacters,
+        characters,
+        locations,
+        items,
+        mediaLibrary,
+        chapters,
+        tags,
         updatedAt: new Date().toISOString(),
       }
       
-      // Save large data to IndexedDB instead of localStorage
-      const storageKey = `story-${currentStory.id}`
-      const result = await saveToIndexedDB(storageKey, updatedStory)
-      
-      if (!result.success) {
-        console.error('Failed to save story:', result.error)
-        // Fallback to localStorage
-        localStorage.setItem(storageKey, JSON.stringify(updatedStory))
-      }
+      // Save to Dexie (IndexedDB)
+      await saveFullStory(updatedStory)
       
       set((draft) => {
         draft.currentStory = updatedStory
       })
+      
+      console.log('Story saved successfully')
     } catch (error) {
       console.error('Failed to save story:', error)
+      alert('Failed to save story. Please try again.')
     }
   },
   
   loadStory: async (storyId) => {
     try {
-      const storageKey = `story-${storyId}`
-      
-      // Try IndexedDB first
-      const result = await loadFromIndexedDB(storageKey)
-      let story: Story | null = null
-      
-      if (result.success && result.data) {
-        story = result.data as Story
-      } else {
-        // Fallback to localStorage
-        const stored = localStorage.getItem(storageKey)
-        if (stored) {
-          story = JSON.parse(stored)
-        }
-      }
+      const story = await loadFullStory(storyId)
       
       if (!story) {
         console.error('Story not found:', storyId)
+        alert('Story not found')
         return
       }
       
       set((draft) => {
         draft.currentStory = story
         draft.nodes = story.nodes || []
-        draft.edges = [] // Edges need to be reconstructed from connections
+        draft.edges = story.connections as Edge[] || []
         draft.variables = story.variables || {}
         draft.importedCharacters = story.importedCharacters || []
+        draft.characters = story.characters || []
+        draft.locations = story.locations || []
+        draft.items = story.items || []
+        draft.mediaLibrary = story.mediaLibrary || []
+        draft.chapters = story.chapters || []
+        draft.tags = story.tags || []
         draft.selectedNodeId = null
         draft.history = []
         draft.historyIndex = -1
       })
+      
+      console.log('Story loaded successfully:', story.name)
     } catch (error) {
       console.error('Failed to load story:', error)
+      alert('Failed to load story. Please try again.')
     }
   },
   
@@ -560,6 +833,12 @@ eventBus.on('projectDeleted', () => {
     edges: [],
     variables: {},
     importedCharacters: [],
+    characters: [],
+    locations: [],
+    items: [],
+    mediaLibrary: [],
+    chapters: [],
+    tags: [],
     selectedNodeId: null,
     previewMode: false,
     currentNodeId: null,
