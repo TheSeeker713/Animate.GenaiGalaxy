@@ -16,6 +16,15 @@ export default function BranchNodeInspector({ node }: BranchNodeInspectorProps) 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateNodeData(node.id, { description: e.target.value })
   }
+  
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    updateNodeData(node.id, { notes: e.target.value })
+  }
+  
+  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const tags = e.target.value.split(',').map(t => t.trim()).filter(Boolean)
+    updateNodeData(node.id, { tags })
+  }
 
   return (
     <div className="space-y-4">
@@ -51,6 +60,34 @@ export default function BranchNodeInspector({ node }: BranchNodeInspectorProps) 
         <p className="mt-1 text-xs text-slate-400">
           Human-readable explanation
         </p>
+      </div>
+      
+      {/* Writer's Notes */}
+      <div>
+        <label className="block text-sm font-medium text-white mb-2">
+          Notes (Internal)
+        </label>
+        <textarea
+          value={node.data.notes || ''}
+          onChange={handleNotesChange}
+          rows={3}
+          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500 resize-none"
+          placeholder="Notes about this branch logic..."
+        />
+      </div>
+      
+      {/* Tags */}
+      <div>
+        <label className="block text-sm font-medium text-white mb-2">
+          Tags (comma-separated)
+        </label>
+        <input
+          type="text"
+          value={node.data.tags?.join(', ') || ''}
+          onChange={handleTagsChange}
+          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-orange-500"
+          placeholder="e.g., conditional, logic"
+        />
       </div>
 
       {/* Output Ports Info */}

@@ -31,10 +31,19 @@ export default function VariableNodeInspector({ node }: VariableNodeInspectorPro
       operation: e.target.value as 'set' | 'add' | 'subtract' | 'toggle' 
     })
   }
+  
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    updateNodeData(node.id, { notes: e.target.value })
+  }
+  
+  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const tags = e.target.value.split(',').map(t => t.trim()).filter(Boolean)
+    updateNodeData(node.id, { tags })
+  }
 
   return (
     <div className="space-y-4">
-      {/* Variable Key */}
+      {/* Variable Name */}
       <div>
         <label className="block text-sm font-medium text-white mb-2">
           Variable Name
@@ -99,6 +108,34 @@ export default function VariableNodeInspector({ node }: VariableNodeInspectorPro
           {node.data.operation !== 'toggle' && String(node.data.value ?? 0)}
           {node.data.operation === 'toggle' && (node.data.key || 'variable')}
         </code>
+      </div>
+      
+      {/* Writer's Notes */}
+      <div>
+        <label className="block text-sm font-medium text-white mb-2">
+          Notes (Internal)
+        </label>
+        <textarea
+          value={node.data.notes || ''}
+          onChange={handleNotesChange}
+          rows={3}
+          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500 resize-none"
+          placeholder="Notes about this variable..."
+        />
+      </div>
+      
+      {/* Tags */}
+      <div>
+        <label className="block text-sm font-medium text-white mb-2">
+          Tags (comma-separated)
+        </label>
+        <input
+          type="text"
+          value={node.data.tags?.join(', ') || ''}
+          onChange={handleTagsChange}
+          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-500"
+          placeholder="e.g., tracking, score"
+        />
       </div>
 
       <div className="pt-4 border-t border-slate-700">

@@ -12,6 +12,15 @@ export default function StartNodeInspector({ node }: StartNodeInspectorProps) {
   const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateNodeData(node.id, { label: e.target.value })
   }
+  
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    updateNodeData(node.id, { notes: e.target.value })
+  }
+  
+  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const tags = e.target.value.split(',').map(t => t.trim()).filter(Boolean)
+    updateNodeData(node.id, { tags })
+  }
 
   return (
     <div className="space-y-4">
@@ -29,6 +38,34 @@ export default function StartNodeInspector({ node }: StartNodeInspectorProps) {
         <p className="mt-1 text-xs text-slate-400">
           The entry point of your story
         </p>
+      </div>
+      
+      {/* Writer's Notes */}
+      <div>
+        <label className="block text-sm font-medium text-white mb-2">
+          Notes (Internal)
+        </label>
+        <textarea
+          value={node.data.notes || ''}
+          onChange={handleNotesChange}
+          rows={3}
+          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-green-500 resize-none"
+          placeholder="Internal notes about your story opening..."
+        />
+      </div>
+      
+      {/* Tags */}
+      <div>
+        <label className="block text-sm font-medium text-white mb-2">
+          Tags (comma-separated)
+        </label>
+        <input
+          type="text"
+          value={node.data.tags?.join(', ') || ''}
+          onChange={handleTagsChange}
+          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-green-500"
+          placeholder="e.g., prologue, act1"
+        />
       </div>
 
       <div className="pt-4 border-t border-slate-700">
