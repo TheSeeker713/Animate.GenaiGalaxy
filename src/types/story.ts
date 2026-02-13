@@ -77,7 +77,7 @@ export interface StoryItem {
   category?: string        // 'weapon', 'key item', 'consumable'
   
   // Visual
-  icon?: MediaAsset
+  icon?: string            // Emoji or icon identifier
   
   // Game mechanics
   variableName?: string    // Track in story variables (e.g., 'has_key')
