@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStoryStore } from '../../store/storyStore'
-import type { DialogueNodeData, ChoiceNodeData, VariableNodeData, EndNodeData } from '../../types/story'
+import type { DialogueNodeData, ChoiceNodeData, VariableNodeData, EndNodeData, StoryCharacter, StoryLocation, MediaAsset } from '../../types/story'
+import { tiptapToHTML } from '../../utils/tiptapConverter'
 
 export default function StoryPreview() {
   const {
@@ -13,6 +14,7 @@ export default function StoryPreview() {
     exitPreview,
     navigateToNode,
     goBack,
+    currentStory,
   } = useStoryStore()
 
   const [displayedText, setDisplayedText] = useState('')
@@ -20,8 +22,20 @@ export default function StoryPreview() {
   const [typingSpeed] = useState(30) // ms per character
 
   const currentNode = nodes.find((n) => n.id === currentNodeId)
+  
+  // Get character data from database if characterId is present
+  const getCharacter = (characterId?: string): StoryCharacter | undefined => {
+    if (!characterId || !currentStory?.characters) return undefined
+    return currentStory.characters.find(c => c.id === characterId)
+  }
+  
+  // Get location data from database if locationId is present
+  const getLocation = (locationId?: string): StoryLocation | undefined => {
+    if (!locationId || !currentStory?.locations) return undefined
+    return currentStory.locations.find(l => l.id === locationId)
+  }
 
-  // Type-writer effect for dialogue
+  // Type-writer effect for dialogue (only for plain text, not HTML)
   useEffect(() => {
     if (!currentNode || currentNode.type !== 'dialogue') {
       setIsTextComplete(true)
@@ -29,6 +43,16 @@ export default function StoryPreview() {
     }
 
     const dialogueData = currentNode.data as DialogueNodeData
+    
+    // If we have rich text, render immediately without typing effect
+    if (dialogueData.richText) {
+      const html = tiptapToHTML(dialogueData.richText)
+      setDisplayedText(html)
+      setIsTextComplete(true)
+      return
+    }
+    
+    // Otherwise use typing effect for plain text
     const fullText = dialogueData.text || ''
     
     setDisplayedText('')
@@ -51,7 +75,11 @@ export default function StoryPreview() {
   const skipTyping = () => {
     if (currentNode && currentNode.type === 'dialogue') {
       const dialogueData = currentNode.data as DialogueNodeData
-      setDisplayedText(dialogueData.text || '')
+      if (dialogueData.richText) {
+        setDisplayedText(tiptapToHTML(dialogueData.richText))
+      } else {
+        setDisplayedText(dialogueData.text || '')
+      }
       setIsTextComplete(true)
     }
   }
@@ -146,6 +174,19 @@ export default function StoryPreview() {
   if (!previewMode || !currentNode) {
     return null
   }
+  
+  // Get background image (from node or location)
+  const getBackgroundImage = (): MediaAsset | null => {
+    const nodeData = currentNode.data as any
+    if (nodeData.backgroundImage) return nodeData.backgroundImage
+    
+    const location = getLocation(nodeData.locationId)
+    if (location?.backgroundImage) return location.backgroundImage
+    
+    return null
+  }
+  
+  const backgroundImage = getBackgroundImage()
 
   const renderNode = () => {
     switch (currentNode.type) {
@@ -167,41 +208,89 @@ export default function StoryPreview() {
 
       case 'dialogue':
         const dialogueData = currentNode.data as DialogueNodeData
+        const character = getCharacter(dialogueData.characterId)
+        const location = getLocation(dialogueData.locationId)
+        const isRichText = !!dialogueData.richText
+        
         return (
           <div className="space-y-6">
             {/* Character Info */}
             <div className="flex items-center gap-4">
-              {dialogueData.characterId && (
-                <div className="w-20 h-20 rounded-full bg-slate-700 overflow-hidden flex-shrink-0">
-                  {/* Character thumbnail would go here */}
+              <div className="w-20 h-20 rounded-full bg-slate-700 overflow-hidden flex-shrink-0">
+                {character?.thumbnail?.url ? (
+                  <img 
+                    src={character.thumbnail.url} 
+                    alt={character.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
                   <div className="w-full h-full flex items-center justify-center text-3xl">
                     👤
                   </div>
-                </div>
-              )}
+                )}
+              </div>
               <div>
-                <div className="text-xl font-bold text-white">
-                  {dialogueData.characterName || 'Character'}
+                <div 
+                  className="text-xl font-bold text-white"
+                  style={character?.color ? { color: character.color } : undefined}
+                >
+                  {character?.name || dialogueData.characterName || 'Character'}
                 </div>
                 {dialogueData.expression && (
                   <div className="text-sm text-slate-400">
                     {dialogueData.expression}
                   </div>
                 )}
+                {location && (
+                  <div className="text-sm text-cyan-400 mt-1">
+                    📍 {location.name}
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Foreground Media */}
+            {dialogueData.foregroundMedia?.url && (
+              <div className="bg-slate-800/90 rounded-xl p-2 border-2 border-slate-700">
+                {dialogueData.foregroundMedia.type === 'video' ? (
+                  <video 
+                    src={dialogueData.foregroundMedia.url}
+                    controls
+                    className="w-full max-h-96 object-contain rounded-lg"
+                  />
+                ) : (
+                  <img 
+                    src={dialogueData.foregroundMedia.url}
+                    alt={dialogueData.foregroundMedia.caption || ''}
+                    className="w-full max-h-96 object-contain rounded-lg"
+                  />
+                )}
+                {dialogueData.foregroundMedia.caption && (
+                  <div className="text-center text-sm text-slate-400 mt-2 italic">
+                    {dialogueData.foregroundMedia.caption}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Dialogue Box */}
             <div 
               className="bg-slate-800/90 rounded-xl p-6 border-2 border-blue-500/30 min-h-32 cursor-pointer"
               onClick={!isTextComplete ? skipTyping : undefined}
             >
-              <p className="text-white text-lg leading-relaxed whitespace-pre-wrap">
-                {displayedText}
-                {!isTextComplete && (
-                  <span className="inline-block w-2 h-5 bg-white ml-1 animate-pulse"></span>
-                )}
-              </p>
+              {isRichText ? (
+                <div 
+                  className="text-white text-lg leading-relaxed prose prose-invert prose-blue max-w-none"
+                  dangerouslySetInnerHTML={{ __html: displayedText }}
+                />
+              ) : (
+                <p className="text-white text-lg leading-relaxed whitespace-pre-wrap">
+                  {displayedText}
+                  {!isTextComplete && (
+                    <span className="inline-block w-2 h-5 bg-white ml-1 animate-pulse"></span>
+                  )}
+                </p>
+              )}
             </div>
 
             {/* Continue Button */}
@@ -216,7 +305,7 @@ export default function StoryPreview() {
               </div>
             )}
 
-            {!isTextComplete && (
+            {!isTextComplete && !isRichText && (
               <div className="text-center text-sm text-slate-400">
                 Click to skip typing...
               </div>
@@ -226,31 +315,58 @@ export default function StoryPreview() {
 
       case 'choice':
         const choiceData = currentNode.data as ChoiceNodeData
+        const choiceLocation = getLocation(choiceData.locationId)
+        const choicePromptHTML = choiceData.promptRichText ? tiptapToHTML(choiceData.promptRichText) : null
+        
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-white mb-6">
-                {choiceData.prompt || 'Choose your path'}
-              </h2>
+              {choicePromptHTML ? (
+                <div 
+                  className="text-2xl font-bold text-white mb-6 prose prose-invert prose-blue max-w-none"
+                  dangerouslySetInnerHTML={{ __html: choicePromptHTML }}
+                />
+              ) : (
+                <h2 className="text-2xl font-bold text-white mb-6">
+                  {choiceData.prompt || 'Choose your path'}
+                </h2>
+              )}
+              
+              {choiceLocation && (
+                <div className="text-sm text-cyan-400 mb-4">
+                  📍 {choiceLocation.name}
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
-              {choiceData.choices.map((choice, index) => (
-                <button
-                  key={choice.id}
-                  onClick={() => handleChoice(choice.id)}
-                  className="w-full p-4 bg-purple-600/20 hover:bg-purple-600/40 border-2 border-purple-500/50 hover:border-purple-400 rounded-lg text-left transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
-                      {index + 1}
+              {choiceData.choices.map((choice, index) => {
+                const choiceTextHTML = choice.richText ? tiptapToHTML(choice.richText) : null
+                
+                return (
+                  <button
+                    key={choice.id}
+                    onClick={() => handleChoice(choice.id)}
+                    className="w-full p-4 bg-purple-600/20 hover:bg-purple-600/40 border-2 border-purple-500/50 hover:border-purple-400 rounded-lg text-left transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                        {index + 1}
+                      </div>
+                      {choiceTextHTML ? (
+                        <div 
+                          className="text-white text-lg group-hover:text-purple-200 transition-colors prose prose-invert prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: choiceTextHTML }}
+                        />
+                      ) : (
+                        <div className="text-white text-lg group-hover:text-purple-200 transition-colors">
+                          {choice.text}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-white text-lg group-hover:text-purple-200 transition-colors">
-                      {choice.text}
-                    </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                )
+              })}
             </div>
           </div>
         )
@@ -370,9 +486,22 @@ export default function StoryPreview() {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="max-w-3xl w-full">
+      {/* Main Content Area with Background */}
+      <div 
+        className="flex-1 flex items-center justify-center p-8 relative"
+        style={backgroundImage?.url ? {
+          backgroundImage: `url(${backgroundImage.url})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        } : undefined}
+      >
+        {/* Background Overlay */}
+        {backgroundImage && (
+          <div className="absolute inset-0 bg-slate-900/85" />
+        )}
+        
+        {/* Content */}
+        <div className="max-w-3xl w-full relative z-10">
           {renderNode()}
         </div>
       </div>

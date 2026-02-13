@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStoryStore } from '../../store/storyStore'
-import { exportToHTML, exportToJSON } from '../../utils/storyExporter'
+import { exportToHTML, exportToJSON, exportToMarkdown } from '../../utils/storyExporter'
 
 interface ExportModalProps {
   isOpen: boolean
@@ -9,7 +9,7 @@ interface ExportModalProps {
 
 export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
   const { currentStory, nodes, edges, variables, importedCharacters } = useStoryStore()
-  const [exportFormat, setExportFormat] = useState<'html' | 'json'>('html')
+  const [exportFormat, setExportFormat] = useState<'html' | 'json' | 'markdown'>('html')
   const [includeCharacters, setIncludeCharacters] = useState(true)
   const [embedAssets, setEmbedAssets] = useState(true)
   const [exporting, setExporting] = useState(false)
@@ -26,7 +26,6 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
           nodes,
           edges,
           variables,
-          characters: includeCharacters ? importedCharacters : [],
           embedAssets,
         })
         
@@ -40,13 +39,12 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
-      } else {
+      } else if (exportFormat === 'json') {
         const json = exportToJSON({
           story: currentStory,
           nodes,
           edges,
           variables,
-          characters: importedCharacters,
         })
         
         // Download JSON file
@@ -55,6 +53,24 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
         const a = document.createElement('a')
         a.href = url
         a.download = `${currentStory.name.replace(/\s+/g, '-')}.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } else if (exportFormat === 'markdown') {
+        const markdown = exportToMarkdown({
+          story: currentStory,
+          nodes,
+          edges,
+          variables,
+        })
+        
+        // Download Markdown file
+        const blob = new Blob([markdown], { type: 'text/markdown' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${currentStory.name.replace(/\s+/g, '-')}.md`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -121,7 +137,7 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
         {/* Export Format */}
         <div className="mb-6">
           <label className="block text-white font-medium mb-3">Export Format</label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <button
               onClick={() => setExportFormat('html')}
               className={`p-4 rounded-lg border-2 transition-all ${
@@ -133,7 +149,7 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
               <div className="text-2xl mb-2">🌐</div>
               <div className="font-bold">HTML5 Player</div>
               <div className="text-xs mt-1 opacity-80">
-                Playable in any browser
+                Playable in browser
               </div>
             </button>
             <button
@@ -147,7 +163,21 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
               <div className="text-2xl mb-2">📄</div>
               <div className="font-bold">Project JSON</div>
               <div className="text-xs mt-1 opacity-80">
-                Re-import into editor
+                Re-import later
+              </div>
+            </button>
+            <button
+              onClick={() => setExportFormat('markdown')}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                exportFormat === 'markdown'
+                  ? 'bg-purple-600/20 border-purple-500 text-white'
+                  : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:border-slate-500'
+              }`}
+            >
+              <div className="text-2xl mb-2">📝</div>
+              <div className="font-bold">Markdown</div>
+              <div className="text-xs mt-1 opacity-80">
+                Text document
               </div>
             </button>
           </div>

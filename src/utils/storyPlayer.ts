@@ -104,15 +104,25 @@ class StoryPlayer {
     setTimeout(() => this.handleContinue(), 500);
   }
   
-  typeText(text, callback) {
+  typeText(text, callback, isHTML = false) {
     this.displayedText = '';
     this.isTyping = true;
+    
+    if (isHTML) {
+      // For HTML, render immediately without typing effect (HTML typing is complex)
+      this.displayedText = text;
+      this.isTyping = false;
+      this.updateDialogueText(isHTML);
+      if (callback) callback();
+      return;
+    }
+    
     let index = 0;
     
     const type = () => {
       if (index < text.length) {
         this.displayedText = text.substring(0, index + 1);
-        this.updateDialogueText();
+        this.updateDialogueText(isHTML);
         index++;
       } else {
         this.isTyping = false;
@@ -124,17 +134,21 @@ class StoryPlayer {
     this.typingInterval = setInterval(type, 30);
   }
   
-  skipTyping(text) {
+  skipTyping(text, isHTML = false) {
     clearInterval(this.typingInterval);
     this.displayedText = text;
     this.isTyping = false;
-    this.updateDialogueText();
+    this.updateDialogueText(isHTML);
   }
   
-  updateDialogueText() {
+  updateDialogueText(isHTML = false) {
     const textEl = document.getElementById('dialogue-text');
     if (textEl) {
-      textEl.innerHTML = this.displayedText + (this.isTyping ? '<span class="cursor">|</span>' : '');
+      if (isHTML) {
+        textEl.innerHTML = this.displayedText;
+      } else {
+        textEl.innerHTML = this.displayedText + (this.isTyping ? '<span class="cursor">|</span>' : '');
+      }
     }
   }
   
@@ -205,20 +219,82 @@ class StoryPlayer {
   
   renderDialogue(node, container) {
     const data = node.data;
-    const fullText = data.text || '';
+    const fullText = data.textHTML || data.text || '';
+    const character = data.character;
+    const location = data.location;
+    const backgroundImage = data.backgroundImage || location?.backgroundImage;
+    const foregroundMedia = data.foregroundMedia;
+    
+    // Set background image if available
+    if (backgroundImage && backgroundImage.url) {
+      container.style.backgroundImage = 'url(' + backgroundImage.url + ')';
+      container.style.backgroundSize = 'cover';
+      container.style.backgroundPosition = 'center';
+      container.style.position = 'relative';
+    } else {
+      container.style.backgroundImage = '';
+    }
+    
+    let characterAvatarHTML = '👤';
+    if (character && character.thumbnail && character.thumbnail.url) {
+      characterAvatarHTML = '<img src="' + character.thumbnail.url + '" alt="' + character.name + '" class="character-thumbnail">';
+    }
+    
+    let characterNameStyle = '';
+    if (character && character.color) {
+      characterNameStyle = ' style="color: ' + character.color + '"';
+    }
+    
+    let expressionHTML = '';
+    if (data.expression) {
+      expressionHTML = '<div class="character-expression">' + data.expression + '</div>';
+    }
+    
+    let locationBadgeHTML = '';
+    if (location) {
+      locationBadgeHTML = '<div class="location-badge">📍 ' + location.name + '</div>';
+    }
+    
+    let foregroundMediaHTML = '';
+    if (foregroundMedia && foregroundMedia.url) {
+      let mediaContentHTML = '';
+      if (foregroundMedia.type === 'video') {
+        mediaContentHTML = '<video src="' + foregroundMedia.url + '" controls class="media-content"></video>';
+      } else {
+        mediaContentHTML = '<img src="' + foregroundMedia.url + '" alt="' + (foregroundMedia.caption || '') + '" class="media-content">';
+      }
+      
+      let captionHTML = '';
+      if (foregroundMedia.caption) {
+        captionHTML = '<div class="media-caption">' + foregroundMedia.caption + '</div>';
+      }
+      
+      foregroundMediaHTML = '<div class="foreground-media">' + mediaContentHTML + captionHTML + '</div>';
+    }
+    
+    let overlayHTML = backgroundImage ? '<div class="background-overlay"></div>' : '';
     
     container.innerHTML = \`
       <div class="node-content">
+        \${overlayHTML}
+        
         <div class="character-info">
-          <div class="character-avatar">👤</div>
+          <div class="character-avatar">
+            \${characterAvatarHTML}
+          </div>
           <div class="character-details">
-            <div class="character-name">\${data.characterName || 'Character'}</div>
-            \${data.expression ? \`<div class="character-expression">\${data.expression}</div>\` : ''}
+            <div class="character-name"\${characterNameStyle}>
+              \${character?.name || data.characterName || 'Character'}
+            </div>
+            \${expressionHTML}
+            \${locationBadgeHTML}
           </div>
         </div>
         
+        \${foregroundMediaHTML}
+        
         <div class="dialogue-box" onclick="player.isTyping ? player.skipTyping('\${fullText.replace(/'/g, "\\'")}') : null">
-          <p id="dialogue-text"></p>
+          <div id="dialogue-text" class="rich-text"></div>
         </div>
         
         <div id="dialogue-actions"></div>
@@ -231,22 +307,47 @@ class StoryPlayer {
           <button onclick="player.handleContinue()" class="btn-primary">Continue →</button>
         </div>
       \`;
-    });
+    }, true); // Pass true to enable HTML rendering
   }
   
   renderChoice(node, container) {
     const data = node.data;
+    const location = data.location;
+    const backgroundImage = data.backgroundImage || location?.backgroundImage;
+    
+    // Set background image if available
+    if (backgroundImage && backgroundImage.url) {
+      container.style.backgroundImage = 'url(' + backgroundImage.url + ')';
+      container.style.backgroundSize = 'cover';
+      container.style.backgroundPosition = 'center';
+      container.style.position = 'relative';
+    } else {
+      container.style.backgroundImage = '';
+    }
+    
+    const promptHTML = data.textHTML || data.prompt || 'Choose your path';
+    let overlayHTML = backgroundImage ? '<div class="background-overlay"></div>' : '';
+    let locationBadgeHTML = location ? '<div class="location-badge-center">📍 ' + location.name + '</div>' : '';
+    
+    let choicesHTML = '';
+    data.choices.forEach((choice, i) => {
+      const choiceText = choice.textHTML || choice.text || 'Choice ' + (i + 1);
+      choicesHTML += \`
+        <button onclick="player.handleChoice('\${choice.id}')" class="btn-choice">
+          <div class="choice-number">\${i + 1}</div>
+          <div class="choice-text">\${choiceText}</div>
+        </button>
+      \`;
+    });
     
     container.innerHTML = \`
       <div class="node-content center">
-        <h2 class="choice-prompt">\${data.prompt || 'Choose your path'}</h2>
+        \${overlayHTML}
+        
+        <h2 class="choice-prompt">\${promptHTML}</h2>
+        \${locationBadgeHTML}
         <div class="choice-list">
-          \${data.choices.map((choice, i) => \`
-            <button onclick="player.handleChoice('\${choice.id}')" class="btn-choice">
-              <div class="choice-number">\${i + 1}</div>
-              <div class="choice-text">\${choice.text}</div>
-            </button>
-          \`).join('')}
+          \${choicesHTML}
         </div>
       </div>
     \`;
@@ -375,10 +476,23 @@ body {
 .node-content {
   max-width: 48rem;
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 .node-content.center {
   text-align: center;
+}
+
+.background-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.85);
+  border-radius: 1rem;
+  z-index: -1;
 }
 
 .character-info {
@@ -397,6 +511,14 @@ body {
   align-items: center;
   justify-content: center;
   font-size: 2rem;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.character-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .character-name {
@@ -407,6 +529,41 @@ body {
 .character-expression {
   font-size: 0.875rem;
   color: #94a3b8;
+}
+
+.location-badge {
+  font-size: 0.75rem;
+  color: #22d3ee;
+  margin-top: 0.25rem;
+}
+
+.location-badge-center {
+  font-size: 0.875rem;
+  color: #22d3ee;
+  margin-bottom: 1rem;
+}
+
+.foreground-media {
+  margin-bottom: 1.5rem;
+  background: rgba(30, 41, 59, 0.9);
+  border-radius: 0.75rem;
+  padding: 0.5rem;
+}
+
+.media-content {
+  width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  display: block;
+}
+
+.media-caption {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  text-align: center;
+  margin-top: 0.5rem;
+  font-style: italic;
 }
 
 .dialogue-box {
@@ -423,6 +580,58 @@ body {
   font-size: 1.125rem;
   line-height: 1.75;
   white-space: pre-wrap;
+}
+
+.rich-text {
+  font-size: 1.125rem;
+  line-height: 1.75;
+}
+
+.rich-text p {
+  margin-bottom: 0.75rem;
+}
+
+.rich-text p:last-child {
+  margin-bottom: 0;
+}
+
+.rich-text h1, .rich-text h2, .rich-text h3 {
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.rich-text ul, .rich-text ol {
+  margin-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.rich-text blockquote {
+  border-left: 4px solid #3b82f6;
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  font-style: italic;
+  color: #94a3b8;
+}
+
+.rich-text code {
+  background: rgba(30, 41, 59, 0.8);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95em;
+}
+
+.rich-text pre {
+  background: rgba(30, 41, 59, 0.8);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.rich-text pre code {
+  padding: 0;
+  background: transparent;
 }
 
 .cursor {
