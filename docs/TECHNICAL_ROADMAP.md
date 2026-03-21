@@ -1,11 +1,21 @@
 # Technical Implementation Roadmap
-**Last Updated:** February 12, 2026  
-**Version:** 2.2  
-**For:** GenAI Galaxy Animate Character Studio
+**Last Updated:** March 21, 2026  
+**Version:** 2.3  
+**Scope:** This document is the **deep implementation plan for Character Studio**. For the **whole app** (raster, vector, story, platform, CI), see the root [README.md](../README.md) roadmap and [MILESTONES.md](./MILESTONES.md).
 
 ---
 
-## 🚀 Implementation Status
+## Global application (all studios)
+
+Cross-cutting work lives outside Character-only phases:
+
+- **Routing:** `/` and `/dashboard` (dashboard); lazy-loaded studio bundles; see [README.md](../README.md) architecture  
+- **Project index:** `projectStore` upsert for story/character on save; Dexie story list sync on dashboard load; cascade delete for story IndexedDB and character storage  
+- **Quality:** ESLint (`npm run lint`), Vitest (`npm run test`), GitHub Actions CI (`.github/workflows/ci.yml`)
+
+---
+
+## 🚀 Implementation Status (Character Studio)
 
 ### ✅ COMPLETED Phases
 - **Phase 0:** Project foundation (React + TypeScript + Vite + Zustand)

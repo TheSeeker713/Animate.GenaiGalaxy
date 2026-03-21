@@ -6,7 +6,7 @@ import { useAnimationStore } from '../store/useAnimationStore'
 export default function WebcamPuppet() {
   const webcamRef = useRef<Webcam>(null)
   const faceLandmarkerRef = useRef<FaceLandmarker | null>(null)
-  const animationFrameRef = useRef<number>()
+  const animationFrameRef = useRef<number | undefined>(undefined)
   const [isInitialized, setIsInitialized] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDebug, setShowDebug] = useState(true)

@@ -1,12 +1,22 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useProjectStore } from './store/projectStore'
-import Dashboard from './pages/Dashboard'
-import RasterStudio from './pages/RasterStudio'
-import RasterOnboarding from './pages/RasterOnboarding'
-import VectorStudio from './pages/VectorStudio'
-import CharacterStudio from './pages/CharacterStudio'
-import StoryBuilder from './pages/StoryBuilder'
+
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const RasterStudio = lazy(() => import('./pages/RasterStudio'))
+const RasterOnboarding = lazy(() => import('./pages/RasterOnboarding'))
+const VectorStudio = lazy(() => import('./pages/VectorStudio'))
+const CharacterStudio = lazy(() => import('./pages/CharacterStudio'))
+const StoryBuilder = lazy(() => import('./pages/StoryBuilder'))
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200 text-sm">
+      Loading…
+    </div>
+  )
+}
 
 // Route guard for project-based routes
 function ProjectRoute({ children, type }: { children: React.ReactNode, type?: string }) {
@@ -48,44 +58,47 @@ function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/raster" element={<RasterOnboarding />} />
-          <Route 
-            path="/raster/:projectId" 
-            element={
-              <ProjectRoute type="raster">
-                <RasterStudio />
-              </ProjectRoute>
-            } 
-          />
-          <Route 
-            path="/vector/:projectId" 
-            element={
-              <ProjectRoute type="vector">
-                <VectorStudio />
-              </ProjectRoute>
-            } 
-          />
-          <Route 
-            path="/character/:characterId" 
-            element={
-              <ErrorBoundary>
-                <CharacterStudio />
-              </ErrorBoundary>
-            } 
-          />
-          <Route 
-            path="/story/:id" 
-            element={
-              <ErrorBoundary>
-                <StoryBuilder />
-              </ErrorBoundary>
-            } 
-          />
-          {/* Catch-all redirect */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/raster" element={<RasterOnboarding />} />
+            <Route 
+              path="/raster/:projectId" 
+              element={
+                <ProjectRoute type="raster">
+                  <RasterStudio />
+                </ProjectRoute>
+              } 
+            />
+            <Route 
+              path="/vector/:projectId" 
+              element={
+                <ProjectRoute type="vector">
+                  <VectorStudio />
+                </ProjectRoute>
+              } 
+            />
+            <Route 
+              path="/character/:characterId" 
+              element={
+                <ErrorBoundary>
+                  <CharacterStudio />
+                </ErrorBoundary>
+              } 
+            />
+            <Route 
+              path="/story/:id" 
+              element={
+                <ErrorBoundary>
+                  <StoryBuilder />
+                </ErrorBoundary>
+              } 
+            />
+            {/* Catch-all redirect */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </ErrorBoundary>
   )

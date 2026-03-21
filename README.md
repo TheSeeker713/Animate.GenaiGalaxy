@@ -6,10 +6,10 @@ A professional multi-tool creation suite combining frame-by-frame animation, vec
 
 GenAI Galaxy Animate is an **Adobe Creative Suite-style** environment with four specialized studios:
 
-1. **🎨 Raster Animation Studio** (Available Now) - Photoshop-meets-Animate for frame-by-frame bitmap animation
-2. **📐 Vector Studio** (Coming Soon) - Illustrator-style vector graphics with tweening
-3. **🎭 Character Studio** (Coming Soon) - Character rigging with webcam face/body puppeteering  
-4. **📖 Story Builder** (Coming Soon) - Arcweave-inspired node-based interactive storytelling
+1. **🎨 Raster Animation Studio** — Frame-by-frame bitmap animation (Konva), timeline, layers, GIF export
+2. **📐 Vector Studio** — Vector shapes and paths (react-konva), frames/layers (pen tool: polyline MVP)
+3. **🎭 Character Studio** — Templates, rig/morph editing, webcam panel, PNG / Spine-style JSON export
+4. **📖 Story Builder** — React Flow node graph, asset DBs, search, preview, IndexedDB persistence
 
 ## 🎨 Current Features (Raster Animation Studio)
 
@@ -19,7 +19,7 @@ GenAI Galaxy Animate is an **Adobe Creative Suite-style** environment with four 
 - **Timeline**: Actual canvas thumbnails for each frame
 - **Dark Mode**: Eye-friendly dark theme (default)
 - **Keyboard Shortcuts**: Professional workflow with shortcuts
-- **Project Management**: Dashboard with project cards, localStorage persistence
+- **Project Management**: Dashboard with project cards; index in localStorage (Zustand persist); stories in IndexedDB (Dexie); characters in IndexedDB / localStorage fallback
 - **Auto-Save**: Drawing data persists automatically per-frame
 
 ## 🚀 Quick Start
@@ -36,6 +36,12 @@ npm run build
 
 # Preview production build
 npm run preview
+
+# Lint (ESLint)
+npm run lint
+
+# Unit tests (Vitest)
+npm run test
 ```
 
 ## ⌨️ Keyboard Shortcuts (Raster Studio)
@@ -93,113 +99,79 @@ The Character Studio will integrate webcam face/body puppeteering:
 - **Zustand** - State management
 - **gif.js** - GIF export
 
-## 🗂️ Project Structure
+## 🗂️ Project structure (summary)
 
 ```
 src/
-├── pages/            # Route pages
-│   ├── Dashboard.tsx         # Main menu/project management
-│   └── RasterStudio.tsx      # Raster animation workspace
-├── components/       # React components by studio
-│   ├── raster/
-│   │   ├── Canvas.tsx        # Konva drawing canvas
-│   │   ├── Toolbar.tsx       # Drawing tools & controls
-│   │   └── Timeline.tsx      # Frame timeline with thumbnails
-│   └── WebcamPuppet.tsx      # Face tracking (for Character Studio)
-├── store/
-│   ├── projectStore.ts       # Project CRUD with localStorage
-│   └── useAnimationStore.ts  # Raster animation state
-├── types/
-│   └── index.ts      # TypeScript interfaces
-├── utils/
-│   ├── puppetMapper.ts       # Face → rig transformations (planned)
-│   └── gifExporter.ts        # GIF export logic (planned)
-├── App.tsx           # Router & route config
-└── main.tsx          # Entry point
+├── pages/           # Dashboard, RasterStudio, VectorStudio, CharacterStudio, StoryBuilder, …
+├── components/      # raster/, vector/, character/, story/, common/
+├── store/           # Zustand stores (project, animation, vector, character, story)
+├── utils/           # gifExporter, storyDb (Dexie), validators, eventBus, …
+├── App.tsx          # Routes (lazy-loaded studio pages)
+└── main.tsx
 ```
 
-## 🎯 Roadmap
+## 📚 Documentation index
 
-### ✅ Phase 1: Foundation (Complete)
-- Project setup with Vite + React 19 + TypeScript
-- Tailwind CSS v4 configuration
-- Zustand store architecture
-- Dashboard landing page with project management
-- React Router for multi-page navigation
+| Document | Purpose |
+|----------|---------|
+| [docs/README.md](docs/README.md) | Index of business and technical docs |
+| [docs/MILESTONES.md](docs/MILESTONES.md) | Milestones and product backlog |
+| [docs/TECHNICAL_ROADMAP.md](docs/TECHNICAL_ROADMAP.md) | Character Studio technical phases (deep dive) |
+| [docs/CHARACTER_STUDIO_PROGRESS.md](docs/CHARACTER_STUDIO_PROGRESS.md) | Character feature checklist |
+| [docs/STORY_BUILDER_PLAN.md](docs/STORY_BUILDER_PLAN.md) | Story Builder design notes |
+| [docs/DEPLOY.md](docs/DEPLOY.md) | Deployment |
+| [docs/COPILOT_ROADMAP.md](docs/COPILOT_ROADMAP.md) | AI-assistant context and conventions |
 
-### ✅ Phase 2: Raster Animation Core (Complete)
-- Konva canvas integration
-- Brush and eraser tools with size/color controls
-- Frame-by-frame animation system
-- Timeline with actual drawing thumbnails
-- Onion skin feature (previous frame overlay)
-- Playback engine (12-60 FPS)
-- Project persistence with localStorage
+## 🎯 Roadmap (by track)
 
-### ✅ Phase 3: Multi-Tool Architecture (Complete)
-- Dashboard as main entry point
-- Project type system (raster/vector/character/story)
-- Routing structure for studio modules
-- Component organization (pages/, components/raster/)
-- projectStore with CRUD operations
+**Platform (done / ongoing)**  
+- Unified routing (`/` and `/dashboard`); lazy-loaded routes; ESLint + Vitest + GitHub Actions CI  
+- Dashboard project index for raster, vector, story, and character (upsert on save; story sync from Dexie on load)  
+- IndexedDB story data + cascade delete when removing a story project  
 
-### 🚧 Phase 4: Raster Studio Enhancement (Current Sprint)
-- [ ] Selection tools (rectangle, lasso, magic wand)
-- [ ] Transform tool (move, scale, rotate selected area)
-- [ ] Shape primitives (rectangle, ellipse, line, polygon)
-- [ ] Text tool with font selector
-- [ ] Color picker with eyedropper
-- [ ] Layers panel (unlimited layers per frame)
-- [ ] Layer blend modes
-- [ ] GIF/video export with progress modal
-- [ ] Canvas zoom/pan controls
+**Raster — done (core)**  
+- Frame-by-frame drawing, timeline, onion skin, layers, playback, GIF export path  
 
-### 📋 Phase 5: Vector Studio (Planned)
-- [ ] SVG canvas with react-konva or Fabric.js
-- [ ] Pen tool (Bézier curves)
-- [ ] Shape tools (paths, stars, polygons)
-- [ ] Tweening engine (shape morphing, position, rotation, scale)
-- [ ] Easing curves editor
-- [ ] Symbol/component system (reusable vector assets)
-- [ ] Export as SVG, JSON, or video
+**Raster — next**  
+- Selection/transform tools, advanced zoom/pan UX, blend modes polish  
 
-### 📋 Phase 6: Character Studio (Planned)
-- [ ] Character rig builder (bone hierarchy)
-- [ ] Webcam integration (face + body tracking)
-- [ ] MediaPipe Holistic (face 468 + pose 33 + hands 21×2 landmarks)
-- [ ] IK solver (2-bone and multi-bone)
-- [ ] Puppet control mapping UI
-- [ ] Performance recording as keyframe animation
-- [ ] Export as video or reusable rig file
+**Vector — done (MVP)**  
+- Shape tools, grid/snap, pen polyline paths  
 
-### 📋 Phase 7: Story Builder (Planned)
-- [ ] Node-based canvas (Arcweave/Twine-style)
-- [ ] Story node types (scene, dialogue, choice, variable)
-- [ ] Connection lines with conditional logic
-- [ ] Import animations from other studios as assets
-- [ ] Play mode for interactive story testing
-- [ ] Export as JSON, HTML5 game, or interactive video
+**Vector — next**  
+- Bézier editing, tweening/easing, SVG/video export  
 
-### 🚀 Phase 8: Polish & Deploy (Future)
-- [ ] PWA setup (vite-plugin-pwa)
-- [ ] Mobile/tablet touch optimization
-- [ ] Keyboard shortcut configuration
-- [ ] Theme system (light/dark/custom)
-- [ ] Build & deploy to Cloudflare Pages
-- [ ] Custom domain: animate.genaigalaxy.com
+**Character — done (MVP)**  
+- Templates, canvas/morph/bones, save, PNG + Spine JSON export, webcam panel  
+
+**Character — next**  
+- Full GIF/video export, face→rig mapping polish, recording pipeline  
+
+**Story — done (MVP)**  
+- Node graph, inspectors, asset DBs, search→focus node, preview, Dexie persistence  
+
+**Story — next**  
+- Rich export formats, cross-studio asset imports, collaboration (needs backend)  
+
+**Polish & deploy — future**  
+- PWA, touch optimization, configurable shortcuts, themed deploy ([docs/DEPLOY.md](docs/DEPLOY.md)), optional cloud sync  
+
+### Future development (6–18 months)
+
+1. **Stability** — Project bundles (export/import), migration tooling  
+2. **Collaboration** — Shared projects (requires backend)  
+3. **Mobile** — Touch-first pass on Konva/React Flow  
+4. **Product** — Align hosting and tiers with [docs/MASTER_PLAN.md](docs/MASTER_PLAN.md) when scope is fixed
 
 ## 📝 Notes
 
-### Project Management
+### Project management and storage
 
-Projects are stored in browser localStorage with:
-- Unique ID (nanoid)
-- Project type (raster/vector/character/story)
-- Canvas dimensions & FPS
-- Thumbnail image (base64)
-- Created/updated timestamps
-
-Each studio type has isolated state management and dedicated routes.
+- **Dashboard index** (`projectStore`, persisted): id, type, name, thumbnail, dimensions, timestamps — used for Recent Projects and deletes  
+- **Raster / vector**: primarily frame/project data in localStorage / store (see stores)  
+- **Stories**: graph and assets in **IndexedDB** (Dexie); index rows stay in sync when you save or open the dashboard  
+- **Characters**: large payloads in **IndexedDB** with localStorage fallback (`character-{id}`)
 
 ### Raster Animation Details
 
@@ -220,7 +192,7 @@ When Character Studio is built, it will load MediaPipe models from CDN:
 
 - Konva canvas is optimized for smooth drawing at 60 FPS
 - Frame thumbnails are generated on-demand and cached
-- localStorage handles project persistence automatically
+- Persisted data uses localStorage and IndexedDB depending on studio (see above)
 - Recommended: Chrome/Edge for best GPU acceleration
 
 ### Browser Compatibility
@@ -260,24 +232,7 @@ MIT License - feel free to use for your own projects!
 
 ## 🤝 Contributing
 
-Contributions welcome! Current priorities:
-
-**Raster Studio Enhancements**
-- Selection tools (rectangle, lasso)
-- Transform controls
-- Layers panel with blend modes
-- GIF/video export
-
-**New Studios**
-- Vector Studio (SVG canvas + tweening)
-- Character Studio (webcam puppeteering)
-- Story Builder (node-based narrative)
-
-**General Improvements**
-- Mobile/touch optimization
-- Keyboard shortcut customization
-- Performance optimizations
-- Test coverage
+Contributions welcome. See the **Roadmap** section above for per-track next steps; run `npm run lint` and `npm run test` before submitting PRs.
 
 ---
 

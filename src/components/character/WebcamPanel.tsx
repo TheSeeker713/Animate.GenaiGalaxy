@@ -14,7 +14,7 @@ export default function WebcamPanel() {
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationFrameRef = useRef<number>()
+  const animationFrameRef = useRef<number | undefined>(undefined)
   
   const [isWebcamActive, setIsWebcamActive] = useState(false)
   const [isTracking, setIsTracking] = useState(false)

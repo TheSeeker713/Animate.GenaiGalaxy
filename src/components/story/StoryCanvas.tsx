@@ -6,6 +6,7 @@ import ReactFlow, {
   addEdge,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   type Connection,
   type Edge,
   type Node,
@@ -17,6 +18,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 
 import { useStoryStore } from '../../store/storyStore'
+import { eventBus } from '../../utils/eventBus'
 import type { NodeType } from '../../types/story'
 import PerformanceMonitor from './PerformanceMonitor'
 
@@ -36,6 +38,29 @@ const nodeTypes = {
   branch: BranchNode,
   variable: VariableNode,
   end: EndNode,
+}
+
+function StoryFocusListener() {
+  const { setCenter, getNode } = useReactFlow()
+  const setSelectedNodeId = useStoryStore((s) => s.setSelectedNodeId)
+
+  useEffect(() => {
+    const onFocus = (nodeId: string) => {
+      const node = getNode(nodeId)
+      if (!node) return
+      setCenter(node.position.x + 90, node.position.y + 40, {
+        zoom: 1.15,
+        duration: 350,
+      })
+      setSelectedNodeId(nodeId)
+    }
+    eventBus.on('focusStoryNode', onFocus)
+    return () => {
+      eventBus.off('focusStoryNode', onFocus)
+    }
+  }, [setCenter, getNode, setSelectedNodeId])
+
+  return null
 }
 
 export default function StoryCanvas() {
@@ -212,6 +237,7 @@ export default function StoryCanvas() {
       >
         <Background color="#334155" gap={20} size={1} />
         <Controls className="!bg-slate-800 !border-slate-700" />
+        <StoryFocusListener />
         <MiniMap
           className="!bg-slate-800 !border-slate-700"
           nodeColor={(node) => {

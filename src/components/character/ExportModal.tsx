@@ -4,12 +4,12 @@ import Konva from 'konva'
 
 interface ExportModalProps {
   character: Character
-  stageRef: React.RefObject<Konva.Stage>
+  stageRef: React.RefObject<Konva.Stage | null>
   onClose: () => void
 }
 
 export default function ExportModal({ character, stageRef, onClose }: ExportModalProps) {
-  const [exportFormat, setExportFormat] = useState<'png' | 'gif' | 'json'>('png')
+  const [exportFormat, setExportFormat] = useState<'png' | 'json'>('png')
   const [isExporting, setIsExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState(0)
 
@@ -155,9 +155,6 @@ export default function ExportModal({ character, stageRef, onClose }: ExportModa
       case 'png':
         exportAsPNG()
         break
-      case 'gif':
-        alert('GIF export coming soon!')
-        break
       case 'json':
         exportAsSpineJSON()
         break
@@ -185,8 +182,9 @@ export default function ExportModal({ character, stageRef, onClose }: ExportModa
           {/* Export format selection */}
           <div>
             <label className="block text-sm font-medium mb-3">Export Format</label>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <button
+                type="button"
                 onClick={() => setExportFormat('png')}
                 className={`p-4 rounded-lg border-2 transition ${
                   exportFormat === 'png'
@@ -200,20 +198,7 @@ export default function ExportModal({ character, stageRef, onClose }: ExportModa
               </button>
 
               <button
-                onClick={() => setExportFormat('gif')}
-                className={`p-4 rounded-lg border-2 transition ${
-                  exportFormat === 'gif'
-                    ? 'border-blue-500 bg-blue-500 bg-opacity-10'
-                    : 'border-gray-700 hover:border-gray-600'
-                }`}
-                disabled
-              >
-                <div className="text-3xl mb-2">🎞️</div>
-                <div className="font-semibold">GIF Animation</div>
-                <div className="text-xs text-gray-400 mt-1">Coming soon</div>
-              </button>
-
-              <button
+                type="button"
                 onClick={() => setExportFormat('json')}
                 className={`p-4 rounded-lg border-2 transition ${
                   exportFormat === 'json'

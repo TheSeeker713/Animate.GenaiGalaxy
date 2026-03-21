@@ -19,6 +19,7 @@ import type { Node, Edge } from 'reactflow'
 import { eventBus, safeEmit } from '../utils/eventBus'
 import { sanitizeText, validateCondition, enforceLimit } from '../utils/validators'
 import { saveFullStory, loadFullStory } from '../utils/storyDb'
+import { useProjectStore } from './projectStore'
 import { calculateStoryWordCount, calculateEstimatedPlaytime, findNodesUsingCharacter, findNodesUsingLocation } from '../types/storyAssets'
 
 // Limits to prevent performance issues
@@ -679,6 +680,16 @@ export const useStoryStore = create<StoryStore>()(
       draft.history = []
       draft.historyIndex = -1
     })
+
+    useProjectStore.getState().upsertProjectIndex({
+      id: story.id,
+      name: story.name,
+      type: 'story',
+      thumbnail: '',
+      width: 1920,
+      height: 1080,
+      fps: 24,
+    })
   },
   
   saveStory: async () => {
@@ -722,6 +733,16 @@ export const useStoryStore = create<StoryStore>()(
       
       set((draft) => {
         draft.currentStory = updatedStory
+      })
+
+      useProjectStore.getState().upsertProjectIndex({
+        id: updatedStory.id,
+        name: updatedStory.name,
+        type: 'story',
+        thumbnail: '',
+        width: 1920,
+        height: 1080,
+        fps: 24,
       })
       
       console.log('Story saved successfully')
@@ -826,7 +847,11 @@ export const useStoryStore = create<StoryStore>()(
 })))
 
 // Subscribe to cross-store events
-eventBus.on('projectDeleted', () => {
+eventBus.on('projectDeleted', ({ id, type }) => {
+  if (type !== 'story') return
+  const { currentStory } = useStoryStore.getState()
+  if (currentStory?.id !== id) return
+
   useStoryStore.setState({
     currentStory: null,
     nodes: [],

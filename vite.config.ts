@@ -12,13 +12,14 @@ export default defineConfig({
     }
   },
   build: {
-    chunkSizeWarningLimit: 2000,
+    chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
         manualChunks: {
-          pixi: ['pixi.js']
-        }
-      }
-    }
-  }
+          pixi: ['pixi.js'],
+          reactflow: ['reactflow'],
+        },
+      },
+    },
+  },
 })

@@ -6,7 +6,9 @@
 
 ## 📚 Current Documentation
 
-### Primary Documents
+### Primary documents
+
+0. **Repository [README.md](../README.md)** — Product overview, **current roadmap**, quick start, scripts (`lint`, `test`)
 
 1. **[MASTER_PLAN.md](./MASTER_PLAN.md)** - **START HERE**
    - Complete business & product overview

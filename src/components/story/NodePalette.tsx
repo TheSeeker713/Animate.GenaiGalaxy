@@ -1,4 +1,5 @@
 import { useStoryStore } from '../../store/storyStore'
+import StorySearch from './StorySearch'
 import type { NodeType } from '../../types/story'
 
 interface NodePaletteItem {
@@ -67,7 +68,8 @@ export default function NodePalette() {
   }
 
   return (
-    <div className="w-64 bg-slate-800 border-r border-slate-700 p-4 overflow-y-auto">
+    <div className="w-72 bg-slate-800 border-r border-slate-700 flex flex-col h-full min-h-0 min-w-0">
+      <div className="p-4 overflow-y-auto flex-shrink-0">
       <div className="mb-4">
         <h2 className="text-lg font-bold text-white mb-1">Node Palette</h2>
         <p className="text-sm text-slate-400">Click to add nodes</p>
@@ -117,6 +119,11 @@ export default function NodePalette() {
             </kbd>
           </div>
         </div>
+      </div>
+      </div>
+
+      <div className="flex-1 min-h-0 border-t border-slate-700 flex flex-col">
+        <StorySearch />
       </div>
     </div>
   )

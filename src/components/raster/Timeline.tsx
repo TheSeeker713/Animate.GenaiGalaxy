@@ -17,7 +17,7 @@ function Timeline() {
     togglePlay,
   } = useAnimationStore()
 
-  const animationFrameRef = useRef<number>()
+  const animationFrameRef = useRef<number | undefined>(undefined)
   const lastFrameTimeRef = useRef<number>(0)
   const frameTickCountRef = useRef<number>(0)
   const timelineRef = useRef<HTMLDivElement>(null)

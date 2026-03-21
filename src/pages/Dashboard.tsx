@@ -1,11 +1,41 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
+import { getAllStories } from '../utils/storyDb'
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { projects, createProject, deleteProject } = useProjectStore()
+  const [showAllProjects, setShowAllProjects] = useState(false)
+  const [infoModal, setInfoModal] = useState<'settings' | 'help' | null>(null)
 
-  const recentProjects = projects.slice(0, 8)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const stories = await getAllStories()
+        if (cancelled) return
+        for (const s of stories) {
+          useProjectStore.getState().upsertProjectIndex({
+            id: s.id,
+            name: s.name,
+            type: 'story',
+            thumbnail: '',
+            width: 1920,
+            height: 1080,
+            fps: 24,
+          })
+        }
+      } catch {
+        /* IndexedDB may be unavailable in private mode */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const displayedProjects = showAllProjects ? projects : projects.slice(0, 8)
 
   const handleCreateProject = (type: 'raster' | 'vector' | 'character' | 'story') => {
     // Navigate to appropriate studio/onboarding
@@ -13,7 +43,7 @@ export default function Dashboard() {
       case 'raster':
         navigate('/raster')
         break
-      case 'vector':
+      case 'vector': {
         const result = createProject({
           name: `New ${type} Project`,
           type,
@@ -26,6 +56,7 @@ export default function Dashboard() {
           navigate(`/vector/${result.data.id}`)
         }
         break
+      }
       case 'character':
         navigate('/character/new')
         break
@@ -43,8 +74,14 @@ export default function Dashboard() {
       case 'vector':
         navigate(`/vector/${projectId}`)
         break
+      case 'character':
+        navigate(`/character/${projectId}`)
+        break
+      case 'story':
+        navigate(`/story/${projectId}`)
+        break
       default:
-        alert(`${type} Studio coming soon!`)
+        alert(`${type} Studio is not available.`)
     }
   }
 
@@ -66,10 +103,18 @@ export default function Dashboard() {
               <p className="text-slate-400 text-sm mt-1">Multi-Tool Creation Suite</p>
             </div>
             <div className="flex items-center gap-4">
-              <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded transition">
+              <button
+                type="button"
+                onClick={() => setInfoModal('settings')}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded transition"
+              >
                 ⚙️ Settings
               </button>
-              <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded transition">
+              <button
+                type="button"
+                onClick={() => setInfoModal('help')}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded transition"
+              >
                 ❓ Help
               </button>
             </div>
@@ -137,8 +182,8 @@ export default function Dashboard() {
               <p className="text-slate-400 text-sm">
                 Interactive narrative designer with branching stories
               </p>
-              <div className="mt-4 text-xs text-yellow-400">
-                🚧 Coming soon
+              <div className="mt-4 text-xs text-pink-400">
+                ✓ Available now
               </div>
             </button>
           </div>
@@ -149,13 +194,17 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">Recent Projects</h2>
             {projects.length > 8 && (
-              <button className="text-cyan-400 hover:text-cyan-300 text-sm">
-                View all →
+              <button
+                type="button"
+                onClick={() => setShowAllProjects((v) => !v)}
+                className="text-cyan-400 hover:text-cyan-300 text-sm"
+              >
+                {showAllProjects ? 'Show less' : 'View all →'}
               </button>
             )}
           </div>
 
-          {recentProjects.length === 0 ? (
+          {displayedProjects.length === 0 ? (
             <div className="text-center py-16 bg-slate-800/30 rounded-xl border border-slate-700">
               <div className="text-6xl mb-4">🎬</div>
               <h3 className="text-xl font-bold mb-2">No projects yet</h3>
@@ -163,7 +212,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {recentProjects.map((project) => (
+              {displayedProjects.map((project) => (
                 <div
                   key={project.id}
                   className="group bg-slate-800/50 rounded-lg border border-slate-700 hover:border-cyan-500 transition-all overflow-hidden"
@@ -197,7 +246,7 @@ export default function Dashboard() {
                       onClick={(e) => {
                         e.stopPropagation()
                         if (confirm(`Delete "${project.name}"?`)) {
-                          deleteProject(project.id)
+                          void deleteProject(project.id)
                         }
                       }}
                       className="text-xs text-red-400 hover:text-red-300"
@@ -211,6 +260,37 @@ export default function Dashboard() {
           )}
         </section>
       </main>
+
+      {infoModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="info-modal-title"
+        >
+          <div className="max-w-md w-full rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
+            <h2 id="info-modal-title" className="text-lg font-bold mb-3">
+              {infoModal === 'settings' ? 'Settings' : 'Help'}
+            </h2>
+            {infoModal === 'settings' ? (
+              <p className="text-slate-300 text-sm leading-relaxed">
+                Project data is stored in this browser (local storage and IndexedDB). Clear site data only if you intend to remove local projects. Keyboard shortcuts vary by studio; see the README for Raster Studio shortcuts.
+              </p>
+            ) : (
+              <p className="text-slate-300 text-sm leading-relaxed">
+                Create a project from the cards above, or open a recent project from the grid. Use the dashboard button in each studio to return here. For full documentation, see the repository README and the docs folder.
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => setInfoModal(null)}
+              className="mt-4 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

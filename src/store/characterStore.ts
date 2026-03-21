@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid'
 import { compress, decompress } from 'lz-string'
 import type { Character, CharacterTemplate } from '@/types/character'
 import { eventBus, safeEmit } from '../utils/eventBus'
+import { useProjectStore } from './projectStore'
 import { saveToIndexedDB } from '../utils/storageManager'
 import { sanitizeText, validateNumber } from '../utils/validators'
 
@@ -259,6 +260,16 @@ export const useCharacterStore = create<CharacterState>()(
         draft.lastSaved = new Date()
         draft.isSaving = false
       })
+
+      useProjectStore.getState().upsertProjectIndex({
+        id: updatedCharacter.id,
+        name: updatedCharacter.name,
+        type: 'character',
+        thumbnail: updatedCharacter.thumbnail ?? '',
+        width: 1920,
+        height: 1080,
+        fps: 24,
+      })
       
       console.log('Character saved:', updatedCharacter.name)
     } catch (error) {
@@ -420,7 +431,11 @@ const debouncedAutoSave = debounce(
 )
 
 // Subscribe to cross-store events
-eventBus.on('projectDeleted', () => {
+eventBus.on('projectDeleted', ({ id, type }) => {
+  if (type !== 'character') return
+  const { currentCharacter } = useCharacterStore.getState()
+  if (currentCharacter?.id !== id) return
+
   useCharacterStore.setState({
     currentCharacter: null,
     baseTemplate: null,

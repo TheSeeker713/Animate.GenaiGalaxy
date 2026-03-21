@@ -1,8 +1,8 @@
 # GitHub Copilot Roadmap Bible
 **Project:** GenAI Galaxy Animate - Character Animation Platform  
 **Purpose:** Comprehensive context for AI-assisted development  
-**Last Updated:** February 10, 2026  
-**Version:** 1.0
+**Last Updated:** March 21, 2026  
+**Version:** 1.1
 
 > **For AI Assistants:** This document provides complete project context, coding standards, architecture decisions, and development workflows. Always reference this before making code changes.
 
@@ -30,7 +30,7 @@ Styling: Tailwind CSS v4
 Routing: React Router 7
 State: Zustand (lightweight, no Redux complexity)
 Rendering: Konva.js (Canvas 2D) - Current editor layer
-Storage: localStorage (MVP), IndexedDB (future)
+Storage: localStorage (project index, raster/vector), IndexedDB (Dexie for stories; character payloads), CI: `npm run lint`, `npm run test`, `npm run build`
 ```
 
 ### Project Structure

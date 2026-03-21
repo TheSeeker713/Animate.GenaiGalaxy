@@ -1,21 +1,32 @@
 # GenAI Galaxy Animate - Development Milestones
-**Project:** Character Animation Platform  
+**Project:** Multi-studio creative suite (Raster, Vector, Character, Story)  
 **Started:** February 8th, 2026  
-**Current Phase:** Foundation & Core Systems  
-**Last Updated:** February 10, 2026
+**Current Phase:** Platform hardening + per-studio depth  
+**Last Updated:** March 21, 2026
 
 ---
 
-## 📌 Project Status Overview
+## 📌 Project status overview
 
-**Development Philosophy:** Function over form. The current UI is **deliberately basic** - we're building a solid foundation first, focusing on making sure all core systems work correctly. UI/UX polish comes later.
+**Development philosophy:** Function over form first; polish in dedicated passes.
 
-**Current Focus:** 
-- ✅ Core architecture and state management
-- ✅ Rendering pipelines (Canvas 2D with Konva)
-- ✅ User interactions and tooling
-- ⏳ Data persistence and export systems
-- 🔜 Performance layer (WebGL with Pixi.js + Spine)
+**Current focus**
+- ✅ Four studios reachable from the dashboard; unified project index and deletes  
+- ✅ Lazy-loaded routes; CI (lint, test, build)  
+- ⏳ Raster/vector/character/story feature depth (see backlog below)  
+- 🔜 Optional WebGL/Spine playback layer (Character) per [TECHNICAL_ROADMAP.md](./TECHNICAL_ROADMAP.md)
+
+**Product backlog (prioritized after baseline stability)**
+
+| Priority | Track | Items |
+|----------|-------|--------|
+| 1 | Raster | Selection/transform, zoom/pan UX, blend modes |
+| 2 | Vector | Bézier pen editing, tweening/easing, export |
+| 3 | Character | Face→rig mapping, recording, GIF/video export |
+| 4 | Story | Export formats, cross-studio imports |
+| 5 | Platform | PWA, touch, deploy, optional sync |
+
+The root [README.md](../README.md) is the **source of truth** for high-level roadmap wording.
 
 ---
 

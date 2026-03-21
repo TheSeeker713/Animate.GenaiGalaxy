@@ -5,7 +5,10 @@
 import mitt, { type Emitter } from 'mitt';
 
 export type AppEvents = {
-  projectDeleted: string; // projectId
+  projectDeleted: {
+    id: string
+    type: 'raster' | 'vector' | 'character' | 'story'
+  }
   projectSwitched: string; // projectId
   previewStarted: void;
   previewEnded: void;
@@ -13,6 +16,8 @@ export type AppEvents = {
   quotaWarning: { used: number; limit: number };
   webcamStarted: void;
   webcamStopped: void;
+  /** Pan React Flow to a node and select it (Story Builder) */
+  focusStoryNode: string;
 };
 
 // Create singleton event bus

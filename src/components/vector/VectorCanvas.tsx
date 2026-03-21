@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import { Stage, Layer, Rect, Ellipse, Line, Star, RegularPolygon, Text } from 'react-konva'
 import { useVectorStore } from '../../store/vectorStore'
-import type { VectorPath } from '../../types/vector'
+import type { VectorPath, BezierPoint } from '../../types/vector'
 import Konva from 'konva'
 
 export default function VectorCanvas() {
@@ -11,6 +11,7 @@ export default function VectorCanvas() {
   const [stageSize, setStageSize] = useState({ width: 1000, height: 800 })
   const [isDrawing, setIsDrawing] = useState(false)
   const [tempShape, setTempShape] = useState<{ start: { x: number; y: number } } | null>(null)
+  const [penPoints, setPenPoints] = useState<{ x: number; y: number }[]>([])
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null)
 
   const {
@@ -92,7 +93,7 @@ export default function VectorCanvas() {
     setIsDrawing(true)
 
     if (currentTool === 'pen') {
-      // TODO: Implement pen tool with bezier curves
+      setPenPoints([pos])
       return
     }
 
@@ -107,6 +108,16 @@ export default function VectorCanvas() {
     
     // Update cursor position for preview
     setCursorPos(pos)
+
+    if (currentTool === 'pen' && isDrawing) {
+      setPenPoints((prev: { x: number; y: number }[]) => {
+        if (prev.length === 0) return [pos]
+        const last = prev[prev.length - 1]
+        if (Math.hypot(pos.x - last.x, pos.y - last.y) < 1.5) return prev
+        return [...prev, pos]
+      })
+      return
+    }
     
     if (!isDrawing || !tempShape) return
     // Shape preview is handled in render
@@ -116,6 +127,50 @@ export default function VectorCanvas() {
     if (!isDrawing) return
 
     const pos = getPointerPosition()
+
+    if (currentTool === 'pen' && penPoints.length > 0) {
+      setIsDrawing(false)
+      const pts =
+        penPoints.length >= 2
+          ? penPoints
+          : penPoints.length === 1 && pos
+            ? [penPoints[0], pos]
+            : []
+      setPenPoints([])
+      if (pts.length < 2) return
+
+      const xs = pts.map((p) => p.x)
+      const ys = pts.map((p) => p.y)
+      const minX = Math.min(...xs)
+      const minY = Math.min(...ys)
+      const maxX = Math.max(...xs)
+      const maxY = Math.max(...ys)
+      if (maxX - minX < 2 && maxY - minY < 2) return
+
+      const rel: BezierPoint[] = pts.map((p) => ({ x: p.x - minX, y: p.y - minY }))
+      const newPath: VectorPath = {
+        id: crypto.randomUUID(),
+        type: 'path',
+        points: rel,
+        closed: false,
+        fill: 'transparent',
+        stroke: strokeColor,
+        strokeWidth,
+        opacity: 1,
+        visible: true,
+        name: `Path ${paths.length + 1}`,
+        x: minX,
+        y: minY,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        width: maxX - minX,
+        height: maxY - minY,
+      }
+      addPath(currentFrameIndex, currentLayerIndex, newPath)
+      return
+    }
+
     if (!pos) return
 
     setIsDrawing(false)
@@ -445,6 +500,27 @@ export default function VectorCanvas() {
               {...shapeProps}
             />
           )
+        case 'path': {
+          const pts = path.points
+          if (!pts?.length) return null
+          const flat = pts.flatMap((p) => [path.x + p.x, path.y + p.y])
+          return (
+            <Line
+              key={path.id}
+              points={flat}
+              stroke={path.stroke}
+              strokeWidth={path.strokeWidth}
+              lineCap="round"
+              lineJoin="round"
+              opacity={path.opacity}
+              onClick={(e) => handleShapeClick(path.id, e)}
+              onTap={(e) =>
+                handleShapeClick(path.id, e as unknown as Konva.KonvaEventObject<MouseEvent>)
+              }
+              listening
+            />
+          )
+        }
         default:
           return null
       }
@@ -538,6 +614,18 @@ export default function VectorCanvas() {
 
             {/* Temp shape preview */}
             {renderTempShape()}
+
+            {penPoints.length >= 2 && currentTool === 'pen' && (
+              <Line
+                points={penPoints.flatMap((p) => [p.x, p.y])}
+                stroke={strokeColor}
+                strokeWidth={strokeWidth}
+                lineCap="round"
+                lineJoin="round"
+                listening={false}
+                dash={[6 / zoom, 4 / zoom]}
+              />
+            )}
 
             {/* Cursor preview for drawing tools */}
             {cursorPos && !isDrawing && currentTool !== 'select' && (

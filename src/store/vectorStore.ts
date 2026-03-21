@@ -412,7 +412,8 @@ export const useVectorStore = create<VectorStore>()(
 )
 
 // Subscribe to cross-store events
-eventBus.on('projectDeleted', () => {
+eventBus.on('projectDeleted', ({ type }) => {
+  if (type !== 'vector') return
   useVectorStore.setState({
     currentTool: 'select',
     selectedPathIds: [],

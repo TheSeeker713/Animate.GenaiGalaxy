@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ReactFlowProvider } from 'reactflow'
 import { useStoryStore } from '../store/storyStore'
@@ -25,17 +25,33 @@ export default function StoryBuilder() {
     canRedo,
   } = useStoryStore()
 
+  const newStoryCancelled = useRef(false)
+
   useEffect(() => {
     if (id === 'new') {
-      // Create new story
-      const name = prompt('Enter story name:')
-      if (name) {
-        newStory(name)
-      } else {
-        navigate('/dashboard')
+      const existing = useStoryStore.getState().currentStory
+      if (existing) {
+        navigate(`/story/${existing.id}`, { replace: true })
+        return
       }
-    } else if (id) {
-      // Load existing story
+      if (newStoryCancelled.current) {
+        navigate('/dashboard', { replace: true })
+        return
+      }
+      const name = prompt('Enter story name:')
+      if (!name) {
+        newStoryCancelled.current = true
+        navigate('/dashboard', { replace: true })
+        return
+      }
+      newStory(name)
+      const created = useStoryStore.getState().currentStory
+      if (created) {
+        navigate(`/story/${created.id}`, { replace: true })
+      }
+      return
+    }
+    if (id) {
       loadStory(id)
     }
   }, [id, newStory, loadStory, navigate])

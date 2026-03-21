@@ -3,8 +3,9 @@ import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { eventBus, safeEmit } from '../utils/eventBus'
 import { ProjectSchema } from '../utils/validators'
-import { checkStorageQuota } from '../utils/storageManager'
+import { checkStorageQuota, deleteFromIndexedDB } from '../utils/storageManager'
 import { merge } from 'lodash-es'
+import { deleteStory } from '../utils/storyDb'
 
 export type ProjectType = 'raster' | 'vector' | 'character' | 'story'
 
@@ -33,7 +34,16 @@ interface ProjectStore {
   // Actions
   createProject: (project: Omit<Project, 'id' | 'createdAt' | 'modifiedAt'>) => ProjectStoreResult<Project>
   updateProject: (id: string, updates: Partial<Project>) => ProjectStoreResult<void>
-  deleteProject: (id: string) => ProjectStoreResult<void>
+  upsertProjectIndex: (entry: {
+    id: string
+    name: string
+    type: ProjectType
+    thumbnail: string
+    width: number
+    height: number
+    fps?: number
+  }) => ProjectStoreResult<void>
+  deleteProject: (id: string) => Promise<ProjectStoreResult<void>>
   setCurrentProject: (project: Project | null) => void
   getProjectById: (id: string) => ProjectStoreResult<Project>
 }
@@ -113,11 +123,60 @@ export const useProjectStore = create<ProjectStore>()(
         }
       },
 
-      deleteProject: (id) => {
+      upsertProjectIndex: (entry) => {
         try {
-          const exists = get().projects.some((p) => p.id === id)
-          if (!exists) {
+          const existing = get().projects.find((p) => p.id === entry.id)
+          const now = new Date().toISOString()
+          if (existing) {
+            const merged = merge({}, existing, { ...entry, modifiedAt: now })
+            const validated = ProjectSchema.parse(merged)
+            set((draft) => {
+              const index = draft.projects.findIndex((p) => p.id === entry.id)
+              if (index !== -1) {
+                draft.projects[index] = validated
+              }
+            })
+          } else {
+            const newProject: Project = {
+              ...entry,
+              createdAt: now,
+              modifiedAt: now,
+            }
+            const validated = ProjectSchema.parse(newProject)
+            set((draft) => {
+              draft.projects.unshift(validated)
+            })
+          }
+          return { success: true }
+        } catch (error) {
+          console.error('Failed to upsert project index:', error)
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Failed to upsert project',
+          }
+        }
+      },
+
+      deleteProject: async (id) => {
+        try {
+          const project = get().projects.find((p) => p.id === id)
+          if (!project) {
             return { success: false, error: 'Project not found' }
+          }
+
+          if (project.type === 'story') {
+            try {
+              await deleteStory(id)
+            } catch (e) {
+              console.error('Failed to delete story from IndexedDB:', e)
+            }
+          } else if (project.type === 'character') {
+            try {
+              localStorage.removeItem(`character-${id}`)
+              await deleteFromIndexedDB(`character-${id}`)
+            } catch (e) {
+              console.error('Failed to delete character storage:', e)
+            }
           }
 
           set((draft) => {
@@ -127,8 +186,7 @@ export const useProjectStore = create<ProjectStore>()(
             }
           })
 
-          // Notify other stores to reset their state
-          safeEmit('projectDeleted', id)
+          safeEmit('projectDeleted', { id: project.id, type: project.type })
           return { success: true }
         } catch (error) {
           console.error('Failed to delete project:', error)

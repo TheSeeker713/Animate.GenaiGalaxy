@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useStoryStore } from '../../store/storyStore'
+import { safeEmit } from '../../utils/eventBus'
 
 export default function StorySearch() {
   const nodes = useStoryStore((state) => state.nodes)
@@ -165,9 +166,17 @@ export default function StorySearch() {
     }
   }
 
-  const handleResultClick = (result: typeof searchResults[0]) => {
-    // TODO: Implement navigation to node/asset
-    console.log('Navigate to:', result)
+  const setSelectedNodeId = useStoryStore((s) => s.setSelectedNodeId)
+  const toggleInspector = useStoryStore((s) => s.toggleInspector)
+
+  const handleResultClick = (result: (typeof searchResults)[0]) => {
+    if (result.type === 'node') {
+      safeEmit('focusStoryNode', result.id)
+      setSelectedNodeId(result.id)
+      return
+    }
+    setSelectedNodeId(null)
+    toggleInspector()
   }
 
   return (

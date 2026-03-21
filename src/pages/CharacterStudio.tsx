@@ -117,8 +117,7 @@ export default function CharacterStudio() {
   }
   
   const handleTestLive = () => {
-    // TODO: Implement test live mode
-    alert('Test Live feature coming soon!')
+    setSelectedTool('test')
   }
   
   if (!currentCharacter && !showTemplateGallery) {
