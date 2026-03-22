@@ -18,6 +18,8 @@ interface EnhancedExportOptions {
   edges: Edge[]
   variables: Record<string, any>
   embedAssets?: boolean
+  /** When true, JSON root includes `studioLinks` for Character Studio project IDs on story characters. */
+  includeStudioLinks?: boolean
 }
 
 export async function exportToHTML(options: EnhancedExportOptions): Promise<string> {
@@ -143,11 +145,27 @@ export async function exportToHTML(options: EnhancedExportOptions): Promise<stri
 }
 
 export function exportToJSON(options: EnhancedExportOptions): string {
-  const { story, nodes, edges, variables } = options
-  
+  const { story, nodes, edges, variables, includeStudioLinks } = options
+
+  const studioLinks =
+    includeStudioLinks && story.characters?.some((c) => c.importedFromCharacterStudio)
+      ? {
+          characters: story.characters
+            .filter((c) => c.importedFromCharacterStudio)
+            .map((c) => ({
+              storyCharacterId: c.id,
+              name: c.name,
+              characterStudioProjectId: c.importedFromCharacterStudio!,
+            })),
+        }
+      : undefined
+
   const exportData = {
-    version: '2.0',
+    format: 'genai-galaxy-story',
+    schemaVersion: '2.1',
+    version: '2.1',
     exportedAt: new Date().toISOString(),
+    ...(studioLinks ? { studioLinks } : {}),
     story: {
       ...story,
       nodes,
@@ -155,7 +173,7 @@ export function exportToJSON(options: EnhancedExportOptions): string {
       variables,
     },
   }
-  
+
   return JSON.stringify(exportData, null, 2)
 }
 

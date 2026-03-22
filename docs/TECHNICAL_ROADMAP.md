@@ -31,7 +31,7 @@ Cross-cutting work lives outside Character-only phases:
 - Documentation updates (this document, MILESTONES.md, COPILOT_ROADMAP.md)
 
 ### 🔜 NEXT UP
-- **Phase 7:** Face tracking integration (MediaPipe Face Mesh - 2 weeks)
+- **Phase 7:** Face tracking integration (MediaPipe Face Mesh — **MVP:** live map + neutral-head calibration & strength sliders in Webcam panel; extend with recording / blendshape coverage as needed)
 - **Phase 8:** Pixi.js + Spine playback layer (WebGL rendering - 2 weeks)
 - **Phase 9:** Advanced template library (50+ characters - 2 weeks)
 - **Phase 10:** UI/UX polish (professional design system - 2 weeks)

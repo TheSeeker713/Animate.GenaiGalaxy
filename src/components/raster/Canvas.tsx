@@ -355,7 +355,7 @@ export default function Canvas() {
     if (puppetMode) return
 
     const nativeEvent = e.evt
-    if (nativeEvent.button === 1) {
+    if (nativeEvent.button === 1 || (nativeEvent.button === 0 && nativeEvent.altKey)) {
       nativeEvent.preventDefault()
       setIsMiddlePanning(true)
       lastPanClientRef.current = { x: nativeEvent.clientX, y: nativeEvent.clientY }
@@ -626,20 +626,33 @@ export default function Canvas() {
 
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault()
-    
+
     const stage = stageRef.current
     if (!stage) return
 
-    const oldScale = zoom
     const pointer = stage.getPointerPosition()
     if (!pointer) return
+
+    // Shift+wheel: horizontal pan; Alt+wheel: vertical pan (viewport UX)
+    if (e.evt.shiftKey) {
+      const factor = 0.8
+      setPan(panX - e.evt.deltaY * factor, panY)
+      return
+    }
+    if (e.evt.altKey) {
+      const factor = 0.8
+      setPan(panX, panY - e.evt.deltaY * factor)
+      return
+    }
+
+    const oldScale = zoom
 
     // Zoom in/out
     const scaleBy = 1.1
     const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy
 
-    // Keep zoom between 0.1x and 10x
-    const clampedScale = Math.max(0.1, Math.min(10, newScale))
+    // Match fit-to-stage minimum (see auto-fit) and cap max zoom
+    const clampedScale = Math.max(0.05, Math.min(10, newScale))
 
     // Adjust pan to zoom toward cursor
     const mousePointTo = {
@@ -1036,7 +1049,8 @@ export default function Canvas() {
           Doc: {documentWidth}&times;{documentHeight} &middot; Stage: {stageSize.width}&times;{stageSize.height}
         </div>
         <div style={{ opacity: 0.55, fontSize: 10 }} title="Viewport">
-          Pan: middle mouse drag &middot; Zoom: wheel, [ / ], Ctrl+/- &middot; Reset: Ctrl+0
+          Pan: middle drag or Alt+drag &middot; Shift+wheel / Alt+wheel pan H/V &middot; Zoom: wheel, [ / ],
+          Ctrl+/- &middot; Reset: Ctrl+0
         </div>
       </div>
 

@@ -168,7 +168,7 @@ export default function RasterStudio() {
         case '[':
           if (!e.ctrlKey && !e.metaKey) {
             e.preventDefault()
-            setZoom(Math.max(0.1, zoom / 1.15))
+            setZoom(Math.max(0.05, zoom / 1.15))
           }
           break
         case ']':

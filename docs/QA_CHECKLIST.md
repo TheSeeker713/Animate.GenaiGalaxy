@@ -38,6 +38,10 @@ Run through after meaningful changes (routing, stores, canvas, or exports).
 - [ ] `?` opens shortcuts; scroll/pinch zoom within min/max  
 - [ ] Search result focuses node  
 - [ ] Export story → success toast  
+- [ ] Story JSON export with “Character Studio links” when characters have `importedFromCharacterStudio`  
+- [ ] Vector: **Export SVG** downloads current frame  
+- [ ] Character: webcam **Set neutral head** / strength sliders adjust mapping  
+- [ ] Raster: Alt+drag pan, Shift/Alt+wheel pan, zoom out to ~5%  
 
 ## Storage / privacy
 

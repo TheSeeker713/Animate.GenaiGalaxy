@@ -18,6 +18,7 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
   const [exportFormat, setExportFormat] = useState<'html' | 'json' | 'markdown' | 'txt'>('html')
   const [includeCharacters, setIncludeCharacters] = useState(true)
   const [embedAssets, setEmbedAssets] = useState(true)
+  const [includeStudioLinks, setIncludeStudioLinks] = useState(true)
   const [exporting, setExporting] = useState(false)
 
   if (!isOpen || !currentStory) return null
@@ -51,6 +52,7 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
           nodes,
           edges,
           variables,
+          includeStudioLinks,
         })
         
         // Download JSON file
@@ -221,6 +223,28 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
           </div>
         </div>
 
+        {/* Export Options (JSON) */}
+        {exportFormat === 'json' && (
+          <div className="mb-6 space-y-3">
+            <label className="block text-white font-medium mb-3">Options</label>
+            <label className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors">
+              <input
+                type="checkbox"
+                checked={includeStudioLinks}
+                onChange={(e) => setIncludeStudioLinks(e.target.checked)}
+                className="w-5 h-5 rounded"
+              />
+              <div className="flex-1">
+                <div className="text-white font-medium">Include Character Studio links</div>
+                <div className="text-xs text-slate-400">
+                  Adds <code className="text-cyan-400">studioLinks</code> metadata when story characters were imported from Character Studio (
+                  <code className="text-cyan-400">importedFromCharacterStudio</code>)
+                </div>
+              </div>
+            </label>
+          </div>
+        )}
+
         {/* Export Options (HTML only) */}
         {exportFormat === 'html' && (
           <div className="mb-6 space-y-3">
@@ -270,8 +294,9 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
                 </>
               ) : exportFormat === 'json' ? (
                 <>
-                  <strong>Project JSON:</strong> Saves your entire story structure.
-                  Use this to backup your work or share with collaborators.
+                  <strong>Project JSON:</strong> Saves story graph, variables, and schema{' '}
+                  <code className="text-cyan-300">genai-galaxy-story</code> v2.1. Optional Character Studio
+                  cross-references for tooling.
                 </>
               ) : exportFormat === 'markdown' ? (
                 <>

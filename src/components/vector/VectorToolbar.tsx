@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { useVectorStore } from '../../store/vectorStore'
+import { useProjectStore } from '../../store/projectStore'
+import { exportVectorFrameToSVGString } from '../../utils/vectorSvgExport'
+import { showToast } from '../../store/toastStore'
 
 export default function VectorToolbar() {
   const {
@@ -19,7 +22,36 @@ export default function VectorToolbar() {
     addColorToPalette,
   } = useVectorStore()
 
+  const currentProject = useProjectStore((s) => s.currentProject)
+
   const [showColorPalette, setShowColorPalette] = useState(false)
+
+  const handleExportSvg = () => {
+    const { frames, currentFrameIndex } = useVectorStore.getState()
+    const frame = frames[currentFrameIndex]
+    if (!frame) {
+      showToast('No frame to export.', 'warning')
+      return
+    }
+    const w = currentProject?.width ?? 1920
+    const h = currentProject?.height ?? 1080
+    const svg = exportVectorFrameToSVGString(frame, {
+      width: w,
+      height: h,
+      title: currentProject?.name,
+    })
+    const safe = (currentProject?.name || 'vector-frame').replace(/\s+/g, '-')
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${safe}-frame-${currentFrameIndex + 1}.svg`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    showToast('SVG exported (current frame, all visible layers).', 'success')
+  }
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -224,6 +256,17 @@ export default function VectorToolbar() {
           title="Snap to Grid"
         >
           🧲
+        </button>
+      </div>
+
+      <div className="flex gap-1 pl-2">
+        <button
+          type="button"
+          onClick={handleExportSvg}
+          className="px-3 py-2 rounded transition text-sm bg-emerald-600 text-white hover:bg-emerald-500"
+          title="Export current frame as SVG (Bézier paths + shapes)"
+        >
+          Export SVG
         </button>
       </div>
     </div>

@@ -488,7 +488,7 @@ export const useAnimationStore = create<AnimationStore>((set) => ({
   clearSelection: () => set({ selection: null }),
   
   // Zoom/Pan actions
-  setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(10, zoom)) }),
+  setZoom: (zoom) => set({ zoom: Math.max(0.05, Math.min(10, zoom)) }),
   setPan: (x, y) => set({ panX: x, panY: y }),
   resetView: () => set({ zoom: 1, panX: 0, panY: 0 }),
   

@@ -54,6 +54,8 @@ class LandmarkMapperService {
   private static instance: LandmarkMapperService
   private smoother = new LandmarkSmoother()
   private config: Required<LandmarkMapperConfig>
+  /** Subtracted from live head rotation after calibration (neutral resting pose). */
+  private neutralHeadRotation: { x: number; y: number; z: number } | null = null
 
   constructor() {
     this.config = {
@@ -98,7 +100,7 @@ class LandmarkMapperService {
       this.mapBlendshapesToMorphs(landmarks.blendshapes, template, morphUpdates)
     }
 
-    // Calculate head rotation from landmarks
+    // Calculate head rotation from landmarks (relative to calibrated neutral if set)
     const headRotation = this.calculateHeadRotation(landmarks.landmarks)
     if (headRotation && character.skeleton?.rootBoneId) {
       boneRotations[character.skeleton.rootBoneId] = headRotation
@@ -189,32 +191,42 @@ class LandmarkMapperService {
   }
 
   /**
-   * Calculate head rotation (pitch, yaw, roll) from landmarks
+   * Head rotation (pitch, yaw, roll) relative to optional neutral calibration.
    */
   private calculateHeadRotation(
     landmarks: Array<{ x: number; y: number; z: number }>
   ): { x: number; y: number; z: number } {
-    // Use key facial landmarks for rotation estimation
-    const noseTip = landmarks[1] // Nose tip
-    const leftEye = landmarks[33] // Left eye inner corner
-    const rightEye = landmarks[263] // Right eye inner corner
-    const chin = landmarks[152] // Chin
-    const forehead = landmarks[10] // Forehead
+    const raw = this.computeHeadRotationRaw(landmarks)
+    if (this.neutralHeadRotation) {
+      return {
+        x: raw.x - this.neutralHeadRotation.x,
+        y: raw.y - this.neutralHeadRotation.y,
+        z: raw.z - this.neutralHeadRotation.z,
+      }
+    }
+    return raw
+  }
+
+  private computeHeadRotationRaw(
+    landmarks: Array<{ x: number; y: number; z: number }>
+  ): { x: number; y: number; z: number } {
+    const noseTip = landmarks[1]
+    const leftEye = landmarks[33]
+    const rightEye = landmarks[263]
+    const chin = landmarks[152]
+    const forehead = landmarks[10]
 
     if (!noseTip || !leftEye || !rightEye || !chin || !forehead) {
       return { x: 0, y: 0, z: 0 }
     }
 
-    // Calculate yaw (left/right rotation) from eye positions
     const eyeCenterX = (leftEye.x + rightEye.x) / 2
     const yaw = (noseTip.x - eyeCenterX) * 180 * this.config.headRotationScale
 
-    // Calculate pitch (up/down rotation) from nose-to-chin distance
     const faceHeight = Math.abs(forehead.y - chin.y)
     const noseToForehead = Math.abs(noseTip.y - forehead.y)
     const pitch = ((noseToForehead / faceHeight) - 0.5) * 90 * this.config.headRotationScale
 
-    // Calculate roll (tilt) from eye alignment
     const eyeDeltaY = rightEye.y - leftEye.y
     const eyeDeltaX = rightEye.x - leftEye.x
     const roll = Math.atan2(eyeDeltaY, eyeDeltaX) * (180 / Math.PI) * this.config.headRotationScale
@@ -256,6 +268,21 @@ class LandmarkMapperService {
    */
   reset(): void {
     this.smoother.reset()
+  }
+
+  /** Store current head angles as “zero” so mapping is relative to the user’s neutral pose. */
+  captureNeutralHeadFromLandmarks(landmarks: FaceLandmarks): boolean {
+    if (!landmarks.faceDetected || !landmarks.landmarks.length) return false
+    this.neutralHeadRotation = this.computeHeadRotationRaw(landmarks.landmarks)
+    return true
+  }
+
+  clearNeutralHead(): void {
+    this.neutralHeadRotation = null
+  }
+
+  hasNeutralHead(): boolean {
+    return this.neutralHeadRotation !== null
   }
 
   /**

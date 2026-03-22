@@ -8,6 +8,7 @@ import { faceTracker } from '@/utils/faceTracker'
 import type { FaceLandmarks } from '@/utils/faceTracker'
 import { landmarkMapper } from '@/utils/landmarkMapper'
 import { useCharacterStore } from '@/store/characterStore'
+import { showToast } from '@/store/toastStore'
 
 export default function WebcamPanel() {
   const { currentCharacter, baseTemplate, updateCharacter } = useCharacterStore()
@@ -15,6 +16,7 @@ export default function WebcamPanel() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationFrameRef = useRef<number | undefined>(undefined)
+  const lastLandmarksRef = useRef<FaceLandmarks | null>(null)
   
   const [isWebcamActive, setIsWebcamActive] = useState(false)
   const [isTracking, setIsTracking] = useState(false)
@@ -26,7 +28,9 @@ export default function WebcamPanel() {
   // Settings
   const [sensitivity, setSensitivity] = useState(1.0)
   const [smoothing, setSmoothing] = useState(true)
-  
+  const [headRotationScale, setHeadRotationScale] = useState(1.0)
+  const [morphScale, setMorphScale] = useState(1.0)
+
   // FPS calculation
   const fpsRef = useRef({ frames: 0, lastTime: performance.now() })
 
@@ -93,10 +97,10 @@ export default function WebcamPanel() {
     landmarkMapper.setConfig({
       smoothing,
       sensitivity,
-      headRotationScale: 1.0,
-      morphScale: 1.0
+      headRotationScale,
+      morphScale,
     })
-    
+
     trackingLoop()
   }
 
@@ -126,6 +130,7 @@ export default function WebcamPanel() {
     updateFPS()
     
     if (landmarks) {
+      lastLandmarksRef.current = landmarks
       setFaceDetected(landmarks.faceDetected)
       
       // Map landmarks to character
@@ -256,11 +261,27 @@ export default function WebcamPanel() {
       landmarkMapper.setConfig({
         smoothing,
         sensitivity,
-        headRotationScale: 1.0,
-        morphScale: 1.0
+        headRotationScale,
+        morphScale,
       })
     }
-  }, [sensitivity, smoothing, isTracking])
+  }, [sensitivity, smoothing, headRotationScale, morphScale, isTracking])
+
+  const calibrateNeutralHead = () => {
+    const lm = lastLandmarksRef.current
+    if (!lm?.faceDetected) {
+      showToast('Face not visible — look at the camera, then try again.', 'warning')
+      return
+    }
+    if (landmarkMapper.captureNeutralHeadFromLandmarks(lm)) {
+      showToast('Neutral head pose saved. Movement is now relative to this pose.', 'success')
+    }
+  }
+
+  const clearHeadCalibration = () => {
+    landmarkMapper.clearNeutralHead()
+    showToast('Head calibration cleared.', 'success')
+  }
 
   return (
     <div className="webcam-panel bg-gray-800 rounded-lg p-4 space-y-4">
@@ -385,6 +406,64 @@ export default function WebcamPanel() {
               className="w-4 h-4"
             />
           </label>
+
+          <div>
+            <label className="flex items-center justify-between text-sm text-gray-300 mb-1">
+              <span>Head rotation strength</span>
+              <span className="text-blue-400">{headRotationScale.toFixed(2)}×</span>
+            </label>
+            <input
+              type="range"
+              min="0.2"
+              max="2"
+              step="0.05"
+              value={headRotationScale}
+              onChange={(e) => setHeadRotationScale(parseFloat(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label className="flex items-center justify-between text-sm text-gray-300 mb-1">
+              <span>Morph / blendshape strength</span>
+              <span className="text-blue-400">{morphScale.toFixed(2)}×</span>
+            </label>
+            <input
+              type="range"
+              min="0.2"
+              max="2"
+              step="0.05"
+              value={morphScale}
+              onChange={(e) => setMorphScale(parseFloat(e.target.value))}
+              className="w-full"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              Calibration (Phase 7)
+            </span>
+            <p className="text-xs text-gray-500">
+              Hold a relaxed neutral expression, then capture so head tilt maps from that pose.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={calibrateNeutralHead}
+                disabled={!isWebcamActive}
+                className="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 rounded text-sm text-white"
+              >
+                Set neutral head
+              </button>
+              <button
+                type="button"
+                onClick={clearHeadCalibration}
+                className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-white"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
 
           {/* Show Landmarks Toggle */}
           <label className="flex items-center justify-between text-sm text-gray-300 cursor-pointer">

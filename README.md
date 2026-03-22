@@ -136,26 +136,27 @@ src/
 - Frame-by-frame drawing, timeline, onion skin, layers, playback, GIF export path  
 
 **Raster — next**  
-- Selection/transform tools, advanced zoom/pan UX, blend modes polish  
+- Further canvas polish (touch, gesture presets); selection/transform and per-layer blend modes are in-app  
 
 **Vector — done (MVP)**  
 - Shape tools, grid/snap, pen polyline paths  
 
 **Vector — next**  
-- Bézier editing, tweening/easing, SVG/video export  
+- Tweening/easing, multi-frame SVG/video export (single-frame **Export SVG** in toolbar)  
 
 **Character — done (MVP)**  
 - Templates, canvas/morph/bones, save, PNG + Spine JSON export, webcam panel  
 
 **Character — next**  
-- Full GIF/video export, face→rig mapping polish, recording pipeline  
+- Full GIF/video export, recording pipeline; face→rig uses **neutral head calibration** and strength sliders in the webcam panel  
 
 **Story — done (MVP)**  
 - Branching narrative on an **infinite canvas** (React Flow: pan/zoom unbounded graph), fit/reset zoom, shortcuts (`?`), toasts for errors  
 - Inspectors, asset DBs, search→focus node, preview, Dexie persistence  
+- Local OpenAI-compatible assistant (`.env.local`), dialogue line suggest, node thumbnails, media dedupe by hash  
 
 **Story — next**  
-- Rich export formats, cross-studio asset imports, collaboration (needs backend)  
+- Richer player formats, deeper cross-studio asset pipeline, collaboration (needs backend); JSON export includes optional **Character Studio** project IDs (`studioLinks`)  
 
 **Polish & deploy — future**  
 - PWA, touch optimization, configurable shortcuts, themed deploy ([docs/DEPLOY.md](docs/DEPLOY.md)), optional cloud sync  

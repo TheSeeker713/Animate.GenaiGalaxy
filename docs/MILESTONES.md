@@ -20,10 +20,10 @@
 
 | Priority | Track | Items |
 |----------|-------|--------|
-| 1 | Raster | Selection/transform, zoom/pan UX, blend modes |
-| 2 | Vector | Bézier pen editing, tweening/easing, export |
-| 3 | Character | Face→rig mapping, recording, GIF/video export |
-| 4 | Story | Export formats, cross-studio imports |
+| 1 | Raster | Selection/transform, per-layer blend modes (shipped); further zoom/pan polish (Alt+drag / wheel pan, 5% min zoom) |
+| 2 | Vector | Bézier pen + on-canvas handles (shipped); tweening/easing; **SVG frame export** (shipped) |
+| 3 | Character | Face→rig mapping + **neutral-head calibration** & strength sliders (shipped); recording, GIF/video export |
+| 4 | Story | **JSON schema + Character Studio link metadata** (shipped); richer HTML player; optional cloud |
 | 5 | Platform | PWA, touch, deploy, optional sync |
 
 The root [README.md](../README.md) is the **source of truth** for high-level roadmap wording.
