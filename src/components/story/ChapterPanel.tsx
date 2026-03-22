@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStoryStore } from '../../store/storyStore'
+import { showToast } from '../../store/toastStore'
 import type { Chapter } from '../../types/story'
 
 export default function ChapterPanel() {
@@ -38,7 +39,7 @@ export default function ChapterPanel() {
 
   const handleSave = () => {
     if (!formData.name?.trim()) {
-      alert('Chapter name is required')
+      showToast('Chapter name is required.', 'warning')
       return
     }
 

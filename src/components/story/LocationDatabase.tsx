@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStoryStore } from '../../store/storyStore'
+import { showToast } from '../../store/toastStore'
 import type { StoryLocation } from '../../types/story'
 import { MediaUploader } from '../common/MediaUploader'
 
@@ -41,7 +42,7 @@ export default function LocationDatabase() {
 
   const handleSave = () => {
     if (!formData.name?.trim()) {
-      alert('Location name is required')
+      showToast('Location name is required.', 'warning')
       return
     }
 

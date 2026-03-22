@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAnimationStore } from '../../store/useAnimationStore'
+import { showToast } from '../../store/toastStore'
 import { 
   exportToGif, 
   exportToPngSequence, 
@@ -42,7 +43,7 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
           const canvases = await prepareFramesForExport(frames, width, height)
 
           if (canvases.length === 0) {
-            alert('No frames to export!')
+            showToast('No frames to export.', 'warning')
             setIsExporting(false)
             return
           }
@@ -117,7 +118,10 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
       onClose()
     } catch (error) {
       console.error('Export failed:', error)
-      alert('Export failed: ' + (error as Error).message)
+      showToast(
+        'Export failed: ' + (error instanceof Error ? error.message : 'Unknown error'),
+        'error'
+      )
       setIsExporting(false)
     }
   }

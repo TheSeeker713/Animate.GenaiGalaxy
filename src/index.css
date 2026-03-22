@@ -14,6 +14,19 @@
   --studio-accent: #38e1c0;
   --studio-danger: #ef4444;
   --studio-shadow: 0 10px 30px rgba(5, 8, 16, 0.6);
+  --suite-raster: #22d3ee;
+  --suite-vector: #4ade80;
+  --suite-character: #c084fc;
+  --suite-story: #f472b6;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--studio-accent) 70%, white);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible) {
+  outline: none;
 }
 
 * {

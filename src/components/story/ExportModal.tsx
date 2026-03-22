@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStoryStore } from '../../store/storyStore'
+import { showToast } from '../../store/toastStore'
 import { exportToHTML, exportToJSON, exportToMarkdown } from '../../utils/storyExporter'
 
 interface ExportModalProps {
@@ -77,12 +78,14 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
         URL.revokeObjectURL(url)
       }
       
-      // Show success message
-      alert(`Story exported successfully as ${exportFormat.toUpperCase()}!`)
+      showToast(
+        `Story exported as ${exportFormat.toUpperCase()}.`,
+        'success'
+      )
       onClose()
     } catch (error) {
       console.error('Export error:', error)
-      alert('Export failed. Please try again.')
+      showToast('Export failed. Please try again.', 'error')
     } finally {
       setExporting(false)
     }

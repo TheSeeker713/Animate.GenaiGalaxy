@@ -10,7 +10,9 @@
 
 0. **Repository [README.md](../README.md)** — Product overview, **current roadmap**, quick start, scripts (`lint`, `test`)
 
-1. **[MASTER_PLAN.md](./MASTER_PLAN.md)** - **START HERE**
+1. **[QA_CHECKLIST.md](./QA_CHECKLIST.md)** — Manual regression checklist (suites, storage, Story infinite canvas)
+
+2. **[MASTER_PLAN.md](./MASTER_PLAN.md)** - **START HERE**
    - Complete business & product overview
    - Mission, philosophy, pricing strategy
    - Feature specifications
@@ -19,12 +21,14 @@
    - Marketing strategy
    - **~1,000 lines** (consolidated from 7,000+)
 
-2. **[TECHNICAL_ROADMAP.md](./TECHNICAL_ROADMAP.md)** - **Implementation Guide**
+3. **[TECHNICAL_ROADMAP.md](./TECHNICAL_ROADMAP.md)** - **Implementation Guide**
    - Detailed technical specifications
    - Phase-by-phase implementation plan
    - Code examples & data structures
    - Week-by-week timeline
    - Success criteria & checkpoints
+
+4. **[DEPENDENCY_UPGRADES.md](./DEPENDENCY_UPGRADES.md)** — Planned major bumps (TipTap 3, Vite 8)
 
 ---
 

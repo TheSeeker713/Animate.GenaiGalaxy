@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid'
 import type { Node } from 'reactflow'
 import type { ChoiceNodeData, TiptapJSON } from '../../../types/story'
 import { useStoryStore } from '../../../store/storyStore'
+import { showToast } from '../../../store/toastStore'
 import { RichTextEditor } from '../../common/RichTextEditor'
 
 interface ChoiceNodeInspectorProps {
@@ -47,7 +48,7 @@ export default function ChoiceNodeInspector({ node }: ChoiceNodeInspectorProps) 
 
   const addChoice = () => {
     if (node.data.choices.length >= MAX_CHOICES) {
-      alert(`Maximum ${MAX_CHOICES} choices allowed`)
+      showToast(`Maximum ${MAX_CHOICES} choices allowed.`, 'warning')
       return
     }
     
@@ -64,7 +65,7 @@ export default function ChoiceNodeInspector({ node }: ChoiceNodeInspectorProps) 
 
   const removeChoice = (choiceId: string) => {
     if (node.data.choices.length <= 2) {
-      alert('Must have at least 2 choices')
+      showToast('A choice node needs at least two options.', 'warning')
       return
     }
     const updatedChoices = node.data.choices.filter((c) => c.id !== choiceId)

@@ -4,6 +4,7 @@
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { uploadMedia, formatFileSize } from '../../utils/mediaManager'
+import { showToast } from '../../store/toastStore'
 import type { MediaAsset } from '../../types/story'
 
 interface MediaUploaderProps {
@@ -204,7 +205,10 @@ export function QuickUploadButton({
       const media = await uploadMedia(acceptedFiles[0])
       onUpload(media)
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Upload failed')
+      showToast(
+        err instanceof Error ? err.message : 'Upload failed.',
+        'error'
+      )
     } finally {
       setUploading(false)
     }

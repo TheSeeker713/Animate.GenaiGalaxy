@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStoryStore } from '../../store/storyStore'
+import { showToast } from '../../store/toastStore'
 import type { StoryItem } from '../../types/story'
 
 export default function ItemDatabase() {
@@ -57,7 +58,7 @@ export default function ItemDatabase() {
 
   const handleSave = () => {
     if (!formData.name?.trim()) {
-      alert('Item name is required')
+      showToast('Item name is required.', 'warning')
       return
     }
 

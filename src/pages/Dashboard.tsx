@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProjectStore } from '../store/projectStore'
+import { showToast } from '../store/toastStore'
 import { getAllStories } from '../utils/storyDb'
 
 export default function Dashboard() {
@@ -81,7 +82,7 @@ export default function Dashboard() {
         navigate(`/story/${projectId}`)
         break
       default:
-        alert(`${type} Studio is not available.`)
+        showToast(`${type} Studio is not available.`, 'warning')
     }
   }
 

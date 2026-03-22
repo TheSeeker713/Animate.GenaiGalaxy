@@ -19,7 +19,9 @@ import type { Node, Edge } from 'reactflow'
 import { eventBus, safeEmit } from '../utils/eventBus'
 import { sanitizeText, validateCondition, enforceLimit } from '../utils/validators'
 import { saveFullStory, loadFullStory } from '../utils/storyDb'
+import { reportError } from '../utils/reportError'
 import { useProjectStore } from './projectStore'
+import { showToast } from './toastStore'
 import { calculateStoryWordCount, calculateEstimatedPlaytime, findNodesUsingCharacter, findNodesUsingLocation } from '../types/storyAssets'
 
 // Limits to prevent performance issues
@@ -226,7 +228,10 @@ export const useStoryStore = create<StoryStore>()(
     // Hard limit at MAX_NODES
     if (state.nodes.length >= MAX_NODES) {
       console.error(`Node limit reached (${MAX_NODES})`)
-      alert(`Maximum ${MAX_NODES} nodes allowed. Please delete some nodes first.`)
+      showToast(
+        `Maximum ${MAX_NODES} nodes allowed. Delete some nodes first.`,
+        'warning'
+      )
       return
     }
     
@@ -299,7 +304,10 @@ export const useStoryStore = create<StoryStore>()(
     const node = state.nodes.find(n => n.id === nodeId)
     if (node?.type === 'start' && state.nodes.filter(n => n.type === 'start').length === 1) {
       console.warn('Cannot delete the only start node')
-      alert('Cannot delete the only start node. Create a new start node first.')
+      showToast(
+        'Cannot delete the only start node. Create a new start node first.',
+        'warning'
+      )
       return
     }
     
@@ -568,7 +576,10 @@ export const useStoryStore = create<StoryStore>()(
     
     if (!startNode) {
       console.error('No start node found')
-      alert('Cannot start preview: No start node found. Please add a start node.')
+      showToast(
+        'Cannot start preview: add a Start node to the graph first.',
+        'warning'
+      )
       return
     }
     
@@ -747,8 +758,10 @@ export const useStoryStore = create<StoryStore>()(
       
       console.log('Story saved successfully')
     } catch (error) {
-      console.error('Failed to save story:', error)
-      alert('Failed to save story. Please try again.')
+      reportError(error, {
+        context: 'saveStory',
+        userMessage: 'Failed to save story. Please try again.',
+      })
     }
   },
   
@@ -758,7 +771,7 @@ export const useStoryStore = create<StoryStore>()(
       
       if (!story) {
         console.error('Story not found:', storyId)
-        alert('Story not found')
+        showToast('Story not found.', 'warning')
         return
       }
       
@@ -781,8 +794,10 @@ export const useStoryStore = create<StoryStore>()(
       
       console.log('Story loaded successfully:', story.name)
     } catch (error) {
-      console.error('Failed to load story:', error)
-      alert('Failed to load story. Please try again.')
+      reportError(error, {
+        context: 'loadStory',
+        userMessage: 'Failed to load story. Please try again.',
+      })
     }
   },
   

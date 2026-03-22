@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Character } from '@/types/character'
+import { showToast } from '@/store/toastStore'
 import Konva from 'konva'
 
 interface ExportModalProps {
@@ -36,7 +37,7 @@ export default function ExportModal({ character, stageRef, onClose }: ExportModa
       } catch (error) {
         console.error('Export failed:', error)
         setIsExporting(false)
-        alert('Export failed. Please try again.')
+        showToast('Export failed. Please try again.', 'error')
       }
     }, 100)
   }
@@ -76,7 +77,7 @@ export default function ExportModal({ character, stageRef, onClose }: ExportModa
       } catch (error) {
         console.error('Export failed:', error)
         setIsExporting(false)
-        alert('Export failed. Please try again.')
+        showToast('Export failed. Please try again.', 'error')
       }
     }, 100)
   }
@@ -145,7 +146,7 @@ export default function ExportModal({ character, stageRef, onClose }: ExportModa
       } catch (error) {
         console.error('Export failed:', error)
         setIsExporting(false)
-        alert('Export failed. Please try again.')
+        showToast('Export failed. Please try again.', 'error')
       }
     }, 100)
   }

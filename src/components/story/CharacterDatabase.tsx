@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStoryStore } from '../../store/storyStore'
+import { showToast } from '../../store/toastStore'
 import type { StoryCharacter } from '../../types/story'
 import { MediaUploader } from '../common/MediaUploader'
 
@@ -46,7 +47,7 @@ export default function CharacterDatabase() {
 
   const handleSave = () => {
     if (!formData.name?.trim()) {
-      alert('Character name is required')
+      showToast('Character name is required.', 'warning')
       return
     }
 

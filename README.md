@@ -149,7 +149,8 @@ src/
 - Full GIF/video export, face→rig mapping polish, recording pipeline  
 
 **Story — done (MVP)**  
-- Node graph, inspectors, asset DBs, search→focus node, preview, Dexie persistence  
+- Branching narrative on an **infinite canvas** (React Flow: pan/zoom unbounded graph), fit/reset zoom, shortcuts (`?`), toasts for errors  
+- Inspectors, asset DBs, search→focus node, preview, Dexie persistence  
 
 **Story — next**  
 - Rich export formats, cross-studio asset imports, collaboration (needs backend)  

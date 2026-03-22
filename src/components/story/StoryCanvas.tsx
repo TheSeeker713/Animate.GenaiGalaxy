@@ -3,6 +3,7 @@ import ReactFlow, {
   Background,
   Controls,
   MiniMap,
+  Panel,
   addEdge,
   useNodesState,
   useEdgesState,
@@ -21,6 +22,7 @@ import { useStoryStore } from '../../store/storyStore'
 import { eventBus } from '../../utils/eventBus'
 import type { NodeType } from '../../types/story'
 import PerformanceMonitor from './PerformanceMonitor'
+import StoryViewportControls from './StoryViewportControls'
 
 // Import custom node components
 import StartNode from './nodes/StartNode'
@@ -216,6 +218,13 @@ export default function StoryCanvas() {
     >
       {/* Performance Monitor */}
       <PerformanceMonitor />
+
+      {storeNodes.length <= 1 && (
+        <div className="pointer-events-none absolute bottom-6 left-1/2 z-[5] max-w-md -translate-x-1/2 rounded-lg border border-slate-600/60 bg-slate-900/85 px-4 py-2 text-center text-xs text-slate-400 shadow-lg backdrop-blur-sm">
+          Drag the canvas to pan. Scroll or pinch to zoom. This graph is unbounded (infinite
+          canvas). Add nodes from the left palette.
+        </div>
+      )}
       
       <ReactFlow
         nodes={visibleNodes}
@@ -228,14 +237,22 @@ export default function StoryCanvas() {
         onMove={(_, newViewport) => onViewportChange(newViewport)}
         nodeTypes={nodeTypes}
         fitView
+        minZoom={0.08}
+        maxZoom={2}
         attributionPosition="bottom-left"
+        proOptions={{ hideAttribution: true }}
         // Performance optimizations
         panOnScroll
         selectionOnDrag
         panOnDrag={[1, 2]}
         selectNodesOnDrag={false}
       >
-        <Background color="#334155" gap={20} size={1} />
+        <Panel position="top-center" className="!mt-2">
+          <div className="rounded-xl border border-slate-600/80 bg-slate-900/95 px-3 py-2 shadow-lg backdrop-blur-md">
+            <StoryViewportControls />
+          </div>
+        </Panel>
+        <Background color="#475569" gap={24} size={1} className="opacity-40" />
         <Controls className="!bg-slate-800 !border-slate-700" />
         <StoryFocusListener />
         <MiniMap

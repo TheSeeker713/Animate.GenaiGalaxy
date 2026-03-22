@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { StudioErrorBoundary } from './components/StudioErrorBoundary'
+import ToastContainer from './components/common/ToastContainer'
 import { useProjectStore } from './store/projectStore'
 
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -58,42 +60,54 @@ function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <ToastContainer />
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/raster" element={<RasterOnboarding />} />
-            <Route 
-              path="/raster/:projectId" 
+            <Route
+              path="/raster"
               element={
-                <ProjectRoute type="raster">
-                  <RasterStudio />
-                </ProjectRoute>
-              } 
+                <StudioErrorBoundary studioName="Raster onboarding">
+                  <RasterOnboarding />
+                </StudioErrorBoundary>
+              }
             />
-            <Route 
-              path="/vector/:projectId" 
+            <Route
+              path="/raster/:projectId"
               element={
-                <ProjectRoute type="vector">
-                  <VectorStudio />
-                </ProjectRoute>
-              } 
+                <StudioErrorBoundary studioName="Raster Studio">
+                  <ProjectRoute type="raster">
+                    <RasterStudio />
+                  </ProjectRoute>
+                </StudioErrorBoundary>
+              }
             />
-            <Route 
-              path="/character/:characterId" 
+            <Route
+              path="/vector/:projectId"
               element={
-                <ErrorBoundary>
+                <StudioErrorBoundary studioName="Vector Studio">
+                  <ProjectRoute type="vector">
+                    <VectorStudio />
+                  </ProjectRoute>
+                </StudioErrorBoundary>
+              }
+            />
+            <Route
+              path="/character/:characterId"
+              element={
+                <StudioErrorBoundary studioName="Character Studio">
                   <CharacterStudio />
-                </ErrorBoundary>
-              } 
+                </StudioErrorBoundary>
+              }
             />
-            <Route 
-              path="/story/:id" 
+            <Route
+              path="/story/:id"
               element={
-                <ErrorBoundary>
+                <StudioErrorBoundary studioName="Story Builder">
                   <StoryBuilder />
-                </ErrorBoundary>
-              } 
+                </StudioErrorBoundary>
+              }
             />
             {/* Catch-all redirect */}
             <Route path="*" element={<Navigate to="/" replace />} />

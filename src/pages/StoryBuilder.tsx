@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ReactFlowProvider } from 'reactflow'
 import { useStoryStore } from '../store/storyStore'
 import StoryCanvas from '../components/story/StoryCanvas'
+import StoryShortcutsModal from '../components/story/StoryShortcutsModal'
 import NodePalette from '../components/story/NodePalette'
 import NodeInspector from '../components/story/NodeInspector'
 import StoryPreview from '../components/story/StoryPreview'
@@ -12,6 +13,7 @@ export default function StoryBuilder() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const {
     currentStory,
     previewMode,
@@ -84,8 +86,20 @@ export default function StoryBuilder() {
       }
     }
 
+    const onHelp = (e: KeyboardEvent) => {
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+        const t = e.target as HTMLElement
+        if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return
+        e.preventDefault()
+        setShortcutsOpen((v) => !v)
+      }
+    }
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('keydown', onHelp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keydown', onHelp)
+    }
   }, [undo, redo, canUndo, canRedo, saveStory])
 
   const handleBackToDashboard = () => {
@@ -112,6 +126,7 @@ export default function StoryBuilder() {
       <header className="flex items-center justify-between px-4 py-3 bg-slate-800 border-b border-slate-700">
         <div className="flex items-center gap-4">
           <button
+            type="button"
             onClick={handleBackToDashboard}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors"
           >
@@ -127,9 +142,18 @@ export default function StoryBuilder() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <button
+            type="button"
+            onClick={() => setShortcutsOpen(true)}
+            className="px-2.5 py-1.5 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700 text-sm"
+            title="Keyboard shortcuts (?)"
+          >
+            ?
+          </button>
           {/* Undo/Redo */}
           <button
+            type="button"
             onClick={undo}
             disabled={!canUndo()}
             className="px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
@@ -150,6 +174,7 @@ export default function StoryBuilder() {
 
           {/* Actions */}
           <button
+            type="button"
             onClick={saveStory}
             className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors text-sm font-medium"
           >
@@ -157,6 +182,7 @@ export default function StoryBuilder() {
           </button>
           
           <button
+            type="button"
             onClick={() => startPreview()}
             className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors text-sm font-medium"
           >
@@ -173,12 +199,12 @@ export default function StoryBuilder() {
       </header>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Node Palette (Left Sidebar) */}
         <NodePalette />
 
         {/* Canvas Area */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative min-w-0">
           <ReactFlowProvider>
             <StoryCanvas />
           </ReactFlowProvider>
@@ -190,6 +216,8 @@ export default function StoryBuilder() {
 
       {/* Story Preview Overlay */}
       {previewMode && <StoryPreview />}
+
+      <StoryShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
       {/* Export Modal */}
       <ExportModal isOpen={exportModalOpen} onClose={() => setExportModalOpen(false)} />

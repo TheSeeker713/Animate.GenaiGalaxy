@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid'
 import type { VectorState, VectorFrame, VectorLayer, VectorPath, Keyframe } from '../types/vector'
 import { eventBus, safeEmit } from '../utils/eventBus'
 import { validateNumber, clamp, enforceLimit } from '../utils/validators'
+import { showToast } from './toastStore'
 
 // Limits to prevent performance issues
 const MAX_FRAMES = 300
@@ -160,7 +161,7 @@ export const useVectorStore = create<VectorStore>()(
     // Enforce frame limit
     if (state.frames.length >= MAX_FRAMES) {
       console.error(`Frame limit reached (${MAX_FRAMES})`)
-      alert(`Maximum ${MAX_FRAMES} frames allowed.`)
+      showToast(`Maximum ${MAX_FRAMES} frames allowed.`, 'warning')
       return
     }
     
@@ -190,7 +191,7 @@ export const useVectorStore = create<VectorStore>()(
     // Enforce frame limit
     if (state.frames.length >= MAX_FRAMES) {
       console.error(`Frame limit reached (${MAX_FRAMES})`)
-      alert(`Maximum ${MAX_FRAMES} frames allowed.`)
+      showToast(`Maximum ${MAX_FRAMES} frames allowed.`, 'warning')
       return
     }
     
@@ -232,7 +233,10 @@ export const useVectorStore = create<VectorStore>()(
     // Enforce layer limit
     if (frame.layers.length >= MAX_LAYERS_PER_FRAME) {
       console.error(`Layer limit reached (${MAX_LAYERS_PER_FRAME})`)
-      alert(`Maximum ${MAX_LAYERS_PER_FRAME} layers per frame allowed.`)
+      showToast(
+        `Maximum ${MAX_LAYERS_PER_FRAME} layers per frame allowed.`,
+        'warning'
+      )
       return
     }
 
@@ -289,7 +293,10 @@ export const useVectorStore = create<VectorStore>()(
     // Enforce path limit
     if (layer.paths.length >= MAX_PATHS_PER_LAYER) {
       console.error(`Path limit reached (${MAX_PATHS_PER_LAYER})`)
-      alert(`Maximum ${MAX_PATHS_PER_LAYER} paths per layer allowed.`)
+      showToast(
+        `Maximum ${MAX_PATHS_PER_LAYER} paths per layer allowed.`,
+        'warning'
+      )
       return
     }
     
