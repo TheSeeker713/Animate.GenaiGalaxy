@@ -2,13 +2,11 @@
 // WYSIWYG editor with formatting toolbar for Story Builder
 
 import React, { useEffect } from 'react'
-import { useEditor, EditorContent, Editor } from '@tiptap/react'
+import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Underline from '@tiptap/extension-underline'
-import TextStyle from '@tiptap/extension-text-style'
-import Color from '@tiptap/extension-color'
-import CharacterCount from '@tiptap/extension-character-count'
-import Placeholder from '@tiptap/extension-placeholder'
+import { TextStyle } from '@tiptap/extension-text-style'
+import { Color } from '@tiptap/extension-color'
+import { CharacterCount, Placeholder } from '@tiptap/extensions'
 import type { TiptapJSON } from '../../types/story'
 import { debounce } from 'lodash-es'
 
@@ -21,6 +19,8 @@ interface RichTextEditorProps {
   compact?: boolean        // Smaller toolbar for inspectors
   className?: string
   disabled?: boolean
+  /** Local AI / parent tools (e.g. insert suggestion at cursor) */
+  onEditorReady?: (editor: Editor) => void
 }
 
 export function RichTextEditor({
@@ -32,6 +32,7 @@ export function RichTextEditor({
   compact = false,
   className = '',
   disabled = false,
+  onEditorReady,
 }: RichTextEditorProps) {
   // Create debounced onChange handler (500ms delay)
   const debouncedOnChange = React.useMemo(
@@ -48,13 +49,13 @@ export function RichTextEditor({
   )
 
   const editor = useEditor({
+    shouldRerenderOnTransaction: true,
     extensions: [
       StarterKit.configure({
         heading: {
-          levels: [2, 3],  // Only H2 and H3 for dialogue
+          levels: [2, 3], // Only H2 and H3 for dialogue
         },
       }),
-      Underline,
       TextStyle,
       Color,
       CharacterCount.configure({
@@ -75,6 +76,12 @@ export function RichTextEditor({
       },
     },
   })
+
+  useEffect(() => {
+    if (editor && onEditorReady) {
+      onEditorReady(editor)
+    }
+  }, [editor, onEditorReady])
 
   // Update content when prop changes (for external updates)
   useEffect(() => {

@@ -165,6 +165,18 @@ export default function RasterStudio() {
             setZoom(zoom / 1.2)
           }
           break
+        case '[':
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault()
+            setZoom(Math.max(0.1, zoom / 1.15))
+          }
+          break
+        case ']':
+          if (!e.ctrlKey && !e.metaKey) {
+            e.preventDefault()
+            setZoom(Math.min(10, zoom * 1.15))
+          }
+          break
         case '0':
           if (e.ctrlKey || e.metaKey) {
             e.preventDefault()

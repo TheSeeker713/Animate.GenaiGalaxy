@@ -1,4 +1,5 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
+import { reportError } from './utils/reportError'
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { StudioErrorBoundary } from './components/StudioErrorBoundary'
@@ -45,18 +46,42 @@ function ProjectRoute({ children, type }: { children: React.ReactNode, type?: st
 }
 
 function App() {
-  // Setup global error handler
-  if (typeof window !== 'undefined') {
-    window.onerror = (message, source, lineno, colno, error) => {
-      console.error('Global error:', { message, source, lineno, colno, error })
-      return false // Let default handler run
+  useEffect(() => {
+    let lastToastAt = 0
+    const throttleMs = 10_000
+
+    const notify = (reason: unknown, context: string) => {
+      const err =
+        reason instanceof Error ? reason : new Error(String(reason))
+      console.error(context, err)
+      const now = Date.now()
+      if (now - lastToastAt < throttleMs) return
+      lastToastAt = now
+      reportError(err, {
+        context,
+        silent: import.meta.env.DEV,
+      })
     }
-    
-    window.onunhandledrejection = (event) => {
-      console.error('Unhandled promise rejection:', event.reason)
+
+    const onWindowError: OnErrorEventHandler = (message, _source, _lineno, _colno, error) => {
+      const err =
+        error ?? new Error(typeof message === 'string' ? message : 'Unknown error')
+      notify(err, 'global:onerror')
+      return false
     }
-  }
-  
+
+    const onRejection = (event: PromiseRejectionEvent) => {
+      notify(event.reason, 'global:unhandledrejection')
+    }
+
+    window.onerror = onWindowError
+    window.addEventListener('unhandledrejection', onRejection)
+    return () => {
+      window.onerror = null
+      window.removeEventListener('unhandledrejection', onRejection)
+    }
+  }, [])
+
   return (
     <ErrorBoundary>
       <BrowserRouter>

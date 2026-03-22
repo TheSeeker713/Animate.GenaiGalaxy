@@ -1,17 +1,32 @@
 import { memo } from 'react'
 import { Handle, Position, type NodeProps } from 'reactflow'
 import type { DialogueNodeData } from '../../../types/story'
+import { getDialogueCardImageUrl } from '../../../utils/storyNodeVisuals'
 
 export default memo(({ data, selected }: NodeProps<DialogueNodeData>) => {
+  const cardImg = getDialogueCardImageUrl(data)
+
   return (
     <div
-      className={`px-4 py-3 rounded-xl border-2 shadow-lg transition-all ${
+      className={`rounded-xl border-2 shadow-lg transition-all overflow-hidden ${
         selected
           ? 'border-blue-400 shadow-blue-500/50'
           : 'border-blue-600 shadow-blue-900/30'
       } bg-gradient-to-br from-blue-500 to-blue-600`}
       style={{ minWidth: 220, maxWidth: 280 }}
     >
+      {cardImg && (
+        <div className="h-14 w-full bg-slate-900/40 overflow-hidden">
+          <img
+            src={cardImg}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="lazy"
+            draggable={false}
+          />
+        </div>
+      )}
+      <div className="px-4 py-3">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xl">💬</span>
         <div className="text-white font-bold text-xs">DIALOGUE</div>
@@ -45,6 +60,7 @@ export default memo(({ data, selected }: NodeProps<DialogueNodeData>) => {
         position={Position.Right}
         className="!bg-blue-300 !w-3 !h-3 !border-2 !border-white"
       />
+      </div>
     </div>
   )
 })

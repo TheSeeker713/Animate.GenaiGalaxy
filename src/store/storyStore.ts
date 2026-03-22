@@ -487,6 +487,13 @@ export const useStoryStore = create<StoryStore>()(
   // Asset Management - Media
   addMediaAsset: (asset) => {
     set((draft) => {
+      if (asset.contentHash) {
+        const dup = draft.mediaLibrary.find((m) => m.contentHash === asset.contentHash)
+        if (dup) {
+          showToast('Same file already in media library (duplicate skipped).', 'info')
+          return
+        }
+      }
       draft.mediaLibrary.push(asset)
     })
   },

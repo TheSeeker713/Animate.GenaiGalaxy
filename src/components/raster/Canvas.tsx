@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
-import { Stage, Layer, Line, Rect, Ellipse, Image, Text, Group } from 'react-konva'
+import { Stage, Layer, Line, Rect, Ellipse, Image, Text, Group, Transformer } from 'react-konva'
 import { useAnimationStore } from '../../store/useAnimationStore'
 import type { LineData, ShapeData, Layer as RasterLayer } from '../../types'
 import Konva from 'konva'
@@ -28,6 +28,10 @@ export default function Canvas() {
   const [shiftHeld, setShiftHeld] = useState(false)
   const [layerImages, setLayerImages] = useState<Record<string, HTMLImageElement>>({})
   const hasAutoFitRef = useRef(false)
+  const selectionTransformRef = useRef<Konva.Image>(null)
+  const transformerRef = useRef<Konva.Transformer>(null)
+  const [isMiddlePanning, setIsMiddlePanning] = useState(false)
+  const lastPanClientRef = useRef<{ x: number; y: number } | null>(null)
 
   // Track Shift key for snapping
   useEffect(() => {
@@ -133,6 +137,17 @@ export default function Canvas() {
       setOnionSkinImage(null)
     }
   }, [onionSkinEnabled, previousFrame, currentLayerIndex])
+
+  useEffect(() => {
+    const tr = transformerRef.current
+    const img = selectionTransformRef.current
+    if (currentTool === 'transform' && selection && selectionImage && img && tr) {
+      tr.nodes([img])
+      tr.getLayer()?.batchDraw()
+    } else {
+      tr?.nodes([])
+    }
+  }, [currentTool, selection, selectionImage])
 
   // Load selection image
   useEffect(() => {
@@ -338,7 +353,15 @@ export default function Canvas() {
 
   const handlePointerDown = (e: Konva.KonvaEventObject<PointerEvent>) => {
     if (puppetMode) return
-    
+
+    const nativeEvent = e.evt
+    if (nativeEvent.button === 1) {
+      nativeEvent.preventDefault()
+      setIsMiddlePanning(true)
+      lastPanClientRef.current = { x: nativeEvent.clientX, y: nativeEvent.clientY }
+      return
+    }
+
     const pos = getPointerPosition()
     if (!pos) {
       console.warn('Canvas: getPointerPosition returned null')
@@ -346,7 +369,6 @@ export default function Canvas() {
     }
 
     // Extract device type and pressure data from PointerEvent
-    const nativeEvent = e.evt
     const deviceType = detectDeviceType(nativeEvent)
     const hasPressure = hasPressureSupport(nativeEvent)
     const initialPressure = extractPressure(nativeEvent)
@@ -444,10 +466,19 @@ export default function Canvas() {
   const handlePointerMove = (e: Konva.KonvaEventObject<PointerEvent>) => {
     const pos = getPointerPosition()
     if (!pos) return
-    
+
+    if (isMiddlePanning && lastPanClientRef.current) {
+      const ne = e.evt
+      const dx = ne.clientX - lastPanClientRef.current.x
+      const dy = ne.clientY - lastPanClientRef.current.y
+      lastPanClientRef.current = { x: ne.clientX, y: ne.clientY }
+      setPan(panX + dx, panY + dy)
+      return
+    }
+
     // Update cursor position for preview
     setCursorPos(pos)
-    
+
     if (!isDrawing) return
 
     switch (currentTool) {
@@ -512,6 +543,11 @@ export default function Canvas() {
   }
 
   const handlePointerUp = (_e: Konva.KonvaEventObject<PointerEvent>) => {
+    if (isMiddlePanning) {
+      setIsMiddlePanning(false)
+      lastPanClientRef.current = null
+    }
+
     if (!isDrawing) return
 
     const pos = getPointerPosition()
@@ -999,6 +1035,9 @@ export default function Canvas() {
         <div style={{ opacity: 0.5, fontSize: 10 }}>
           Doc: {documentWidth}&times;{documentHeight} &middot; Stage: {stageSize.width}&times;{stageSize.height}
         </div>
+        <div style={{ opacity: 0.55, fontSize: 10 }} title="Viewport">
+          Pan: middle mouse drag &middot; Zoom: wheel, [ / ], Ctrl+/- &middot; Reset: Ctrl+0
+        </div>
       </div>
 
       {/* Puppet mode indicator */}
@@ -1173,7 +1212,7 @@ export default function Canvas() {
               />
             )}
 
-            {/* Active selection */}
+            {/* Active selection — move in Select; scale in Transform */}
             {selection && currentTool === 'select' && selectionImage && (
               <>
                 <Image
@@ -1183,6 +1222,16 @@ export default function Canvas() {
                   width={selection.width}
                   height={selection.height}
                   draggable
+                  onDragEnd={(ev) => {
+                    const n = ev.target
+                    if (!selection) return
+                    setSelection({
+                      ...selection,
+                      x: n.x(),
+                      y: n.y(),
+                    })
+                    pushHistory()
+                  }}
                 />
                 <Rect
                   x={selection.x}
@@ -1193,6 +1242,53 @@ export default function Canvas() {
                   strokeWidth={2 / zoom}
                   dash={[8 / zoom, 4 / zoom]}
                   listening={false}
+                />
+              </>
+            )}
+            {selection && currentTool === 'transform' && selectionImage && (
+              <>
+                <Image
+                  ref={selectionTransformRef}
+                  image={selectionImage}
+                  x={selection.x}
+                  y={selection.y}
+                  width={selection.width}
+                  height={selection.height}
+                  onTransformEnd={() => {
+                    const node = selectionTransformRef.current
+                    if (!node || !selection) return
+                    const sx = node.scaleX()
+                    const sy = node.scaleY()
+                    node.scaleX(1)
+                    node.scaleY(1)
+                    const w = Math.max(4, node.width() * sx)
+                    const h = Math.max(4, node.height() * sy)
+                    node.width(w)
+                    node.height(h)
+                    const pr = Math.min(2, Math.max(1, 1 / zoom))
+                    const dataUrl = node.toDataURL({ pixelRatio: pr })
+                    setSelection({
+                      ...selection,
+                      x: node.x(),
+                      y: node.y(),
+                      width: w,
+                      height: h,
+                      imageData: dataUrl,
+                      rotation: 0,
+                      scaleX: 1,
+                      scaleY: 1,
+                    })
+                    pushHistory()
+                  }}
+                />
+                <Transformer
+                  ref={transformerRef}
+                  rotateEnabled={false}
+                  borderStroke="#60A5FA"
+                  anchorStroke="#93C5FD"
+                  anchorFill="#1E3A8A"
+                  anchorSize={Math.max(8, 10 / zoom)}
+                  borderDash={[4 / zoom, 4 / zoom]}
                 />
               </>
             )}

@@ -8,12 +8,17 @@ import NodePalette from '../components/story/NodePalette'
 import NodeInspector from '../components/story/NodeInspector'
 import StoryPreview from '../components/story/StoryPreview'
 import ExportModal from '../components/story/ExportModal'
+import StoryAssistantPanel from '../components/story/StoryAssistantPanel'
+import { showToast } from '../store/toastStore'
+import { isLocalAiConfigured } from '../utils/localAiClient'
+import { createMediaAssetFromDataUrl } from '../utils/storyAssetImport'
 
 export default function StoryBuilder() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [exportModalOpen, setExportModalOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [assistantOpen, setAssistantOpen] = useState(false)
   const {
     currentStory,
     previewMode,
@@ -21,6 +26,7 @@ export default function StoryBuilder() {
     loadStory,
     saveStory,
     startPreview,
+    addMediaAsset,
     undo,
     redo,
     canUndo,
@@ -68,6 +74,33 @@ export default function StoryBuilder() {
     
     return () => clearInterval(interval)
   }, [currentStory, saveStory])
+
+  // Cross-studio: paste image from clipboard (e.g. screenshot from Raster/Vector) into media library
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const t = e.target as HTMLElement
+      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable) return
+      const items = e.clipboardData?.items
+      if (!items?.length) return
+      for (const item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (!file) continue
+          e.preventDefault()
+          const reader = new FileReader()
+          reader.onload = () => {
+            const dataUrl = reader.result as string
+            addMediaAsset(createMediaAssetFromDataUrl(dataUrl, file.name || 'clipboard.png'))
+            showToast('Image added to Story media library', 'success')
+          }
+          reader.readAsDataURL(file)
+          return
+        }
+      }
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [addMediaAsset])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -151,6 +184,16 @@ export default function StoryBuilder() {
           >
             ?
           </button>
+          {isLocalAiConfigured() && (
+            <button
+              type="button"
+              onClick={() => setAssistantOpen(true)}
+              className="px-2.5 py-1.5 rounded-lg border border-cyan-700 text-cyan-200 hover:bg-slate-700 text-sm"
+              title="Local story assistant (Ollama / OpenAI-compatible)"
+            >
+              Local AI
+            </button>
+          )}
           {/* Undo/Redo */}
           <button
             type="button"
@@ -221,6 +264,8 @@ export default function StoryBuilder() {
 
       {/* Export Modal */}
       <ExportModal isOpen={exportModalOpen} onClose={() => setExportModalOpen(false)} />
+
+      <StoryAssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} />
     </div>
   )
 }

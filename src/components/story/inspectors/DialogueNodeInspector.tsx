@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react'
 import { debounce } from 'lodash-es'
 import type { Node } from 'reactflow'
+import type { Editor } from '@tiptap/react'
 import type { DialogueNodeData, TiptapJSON } from '../../../types/story'
 import { useStoryStore } from '../../../store/storyStore'
 import { RichTextEditor } from '../../common/RichTextEditor'
+import { LocalAiLineAssist } from '../LocalAiLineAssist'
 import { MediaLibrary } from '../../common/MediaLibrary'
 import { MediaUploader } from '../../common/MediaUploader'
 
@@ -20,6 +22,7 @@ export default function DialogueNodeInspector({ node }: DialogueNodeInspectorPro
     mediaLibrary,
     addMediaAsset,
     deleteMediaAsset,
+    currentStory,
   } = useStoryStore()
   
   const [showCharacterPicker, setShowCharacterPicker] = useState(false)
@@ -27,6 +30,7 @@ export default function DialogueNodeInspector({ node }: DialogueNodeInspectorPro
   const [mediaLibraryMode, setMediaLibraryMode] = useState<'background' | 'foreground'>('background')
   const [showLocationPicker, setShowLocationPicker] = useState(false)
   const [notesExpanded, setNotesExpanded] = useState(false)
+  const [dialogueEditor, setDialogueEditor] = useState<Editor | null>(null)
   
   // Get initial content - migrate from legacy text if needed
   const initialRichText = node.data.richText || (node.data.text ? convertLegacyText(node.data.text) : undefined)
@@ -174,16 +178,26 @@ export default function DialogueNodeInspector({ node }: DialogueNodeInspectorPro
 
       {/* Dialogue Text - Rich Text Editor */}
       <div>
-        <label className="block text-sm font-medium text-white mb-2">
-          Dialogue Text
-        </label>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <label className="block text-sm font-medium text-white">
+            Dialogue Text
+          </label>
+          <LocalAiLineAssist
+            editor={dialogueEditor}
+            characterName={node.data.characterName}
+            storyTitle={currentStory?.name}
+            getPlainText={() => dialogueEditor?.getText() ?? node.data.text ?? ''}
+          />
+        </div>
         <RichTextEditor
+          key={node.id}
           content={initialRichText}
           onChange={handleRichTextChange}
           placeholder="Enter what the character says..."
           maxLength={10000}
           showWordCount
           compact
+          onEditorReady={setDialogueEditor}
         />
       </div>
       

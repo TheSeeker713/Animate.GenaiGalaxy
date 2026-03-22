@@ -2,19 +2,71 @@ import { useState } from 'react'
 import type { Character } from '@/types/character'
 import { showToast } from '@/store/toastStore'
 import Konva from 'konva'
+import { exportToGif, downloadBlob } from '@/utils/gifExporter'
 
 interface ExportModalProps {
   character: Character
   stageRef: React.RefObject<Konva.Stage | null>
+  /** When true, Konva stage is not mounted — GIF/PNG need Edit mode. */
+  isPlaybackMode?: boolean
   onClose: () => void
 }
 
-export default function ExportModal({ character, stageRef, onClose }: ExportModalProps) {
-  const [exportFormat, setExportFormat] = useState<'png' | 'json'>('png')
+export default function ExportModal({
+  character,
+  stageRef,
+  isPlaybackMode = false,
+  onClose,
+}: ExportModalProps) {
+  const [exportFormat, setExportFormat] = useState<'png' | 'json' | 'gif'>('png')
   const [isExporting, setIsExporting] = useState(false)
   const [exportProgress, setExportProgress] = useState(0)
 
+  const exportAsGIF = async () => {
+    if (isPlaybackMode) {
+      showToast('Switch to Edit mode (pencil) to export GIF from the Konva canvas.', 'warning')
+      return
+    }
+    const stage = stageRef.current
+    if (!stage) {
+      showToast('Canvas not ready.', 'error')
+      return
+    }
+
+    setIsExporting(true)
+    setExportProgress(10)
+    try {
+      const w = Math.floor(stage.width())
+      const h = Math.floor(stage.height())
+      const dataUrl = stage.toDataURL({ pixelRatio: 1 })
+      const frames = Array.from({ length: 12 }, () => dataUrl)
+      const blob = await exportToGif(frames, {
+        fps: 8,
+        quality: 75,
+        width: w,
+        height: h,
+        repeat: 0,
+        workers: 2,
+      }, (p) => setExportProgress(10 + Math.round(p * 85)))
+      downloadBlob(blob, `${character.name || 'character'}.gif`)
+      setExportProgress(100)
+      showToast('GIF exported (short preview loop from current pose).', 'success')
+      setTimeout(() => {
+        setIsExporting(false)
+        onClose()
+      }, 400)
+    } catch (error) {
+      console.error('GIF export failed:', error)
+      setIsExporting(false)
+      showToast('GIF export failed.', 'error')
+    }
+  }
+
   const exportAsPNG = () => {
+    if (isPlaybackMode) {
+      showToast('Switch to Edit mode to export PNG from the Konva canvas.', 'warning')
+      return
+    }
     const stage = stageRef.current
     if (!stage) return
 
@@ -156,6 +208,9 @@ export default function ExportModal({ character, stageRef, onClose }: ExportModa
       case 'png':
         exportAsPNG()
         break
+      case 'gif':
+        void exportAsGIF()
+        break
       case 'json':
         exportAsSpineJSON()
         break
@@ -183,7 +238,7 @@ export default function ExportModal({ character, stageRef, onClose }: ExportModa
           {/* Export format selection */}
           <div>
             <label className="block text-sm font-medium mb-3">Export Format</label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setExportFormat('png')}
@@ -196,6 +251,20 @@ export default function ExportModal({ character, stageRef, onClose }: ExportModa
                 <div className="text-3xl mb-2">🖼️</div>
                 <div className="font-semibold">PNG Image</div>
                 <div className="text-xs text-gray-400 mt-1">High quality export</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setExportFormat('gif')}
+                className={`p-4 rounded-lg border-2 transition ${
+                  exportFormat === 'gif'
+                    ? 'border-blue-500 bg-blue-500 bg-opacity-10'
+                    : 'border-gray-700 hover:border-gray-600'
+                }`}
+              >
+                <div className="text-3xl mb-2">🎞️</div>
+                <div className="font-semibold">GIF preview</div>
+                <div className="text-xs text-gray-400 mt-1">Edit mode · current pose loop</div>
               </button>
 
               <button
@@ -223,6 +292,16 @@ export default function ExportModal({ character, stageRef, onClose }: ExportModa
                 <li>• Transparent background</li>
                 <li>• Current zoom and position</li>
               </ul>
+            </div>
+          )}
+
+          {exportFormat === 'gif' && (
+            <div className="bg-gray-900 p-4 rounded-lg">
+              <h3 className="font-semibold mb-2">GIF preview</h3>
+              <p className="text-sm text-gray-400">
+                Exports a short looping GIF from the current Konva canvas (single pose). Use Edit mode;
+                for full animation export, a timeline is planned.
+              </p>
             </div>
           )}
 

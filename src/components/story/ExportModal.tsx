@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { useStoryStore } from '../../store/storyStore'
 import { showToast } from '../../store/toastStore'
-import { exportToHTML, exportToJSON, exportToMarkdown } from '../../utils/storyExporter'
+import {
+  exportToHTML,
+  exportToJSON,
+  exportToMarkdown,
+  exportToPlainTextOutline,
+} from '../../utils/storyExporter'
 
 interface ExportModalProps {
   isOpen: boolean
@@ -10,7 +15,7 @@ interface ExportModalProps {
 
 export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
   const { currentStory, nodes, edges, variables, importedCharacters } = useStoryStore()
-  const [exportFormat, setExportFormat] = useState<'html' | 'json' | 'markdown'>('html')
+  const [exportFormat, setExportFormat] = useState<'html' | 'json' | 'markdown' | 'txt'>('html')
   const [includeCharacters, setIncludeCharacters] = useState(true)
   const [embedAssets, setEmbedAssets] = useState(true)
   const [exporting, setExporting] = useState(false)
@@ -72,6 +77,22 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
         const a = document.createElement('a')
         a.href = url
         a.download = `${currentStory.name.replace(/\s+/g, '-')}.md`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } else if (exportFormat === 'txt') {
+        const text = exportToPlainTextOutline({
+          story: currentStory,
+          nodes,
+          edges,
+          variables,
+        })
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${currentStory.name.replace(/\s+/g, '-')}-outline.txt`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -140,7 +161,7 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
         {/* Export Format */}
         <div className="mb-6">
           <label className="block text-white font-medium mb-3">Export Format</label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
               onClick={() => setExportFormat('html')}
               className={`p-4 rounded-lg border-2 transition-all ${
@@ -181,6 +202,20 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
               <div className="font-bold">Markdown</div>
               <div className="text-xs mt-1 opacity-80">
                 Text document
+              </div>
+            </button>
+            <button
+              onClick={() => setExportFormat('txt')}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                exportFormat === 'txt'
+                  ? 'bg-amber-600/20 border-amber-500 text-white'
+                  : 'bg-slate-700/50 border-slate-600 text-slate-300 hover:border-slate-500'
+              }`}
+            >
+              <div className="text-2xl mb-2">📋</div>
+              <div className="font-bold">Plain outline</div>
+              <div className="text-xs mt-1 opacity-80">
+                .txt for notes / diff
               </div>
             </button>
           </div>
@@ -233,10 +268,18 @@ export default function ExportModal({ isOpen, onClose }: ExportModalProps) {
                   <strong>HTML5 Player:</strong> Creates a standalone webpage that plays your story.
                   Share it anywhere, no server required. Works offline!
                 </>
-              ) : (
+              ) : exportFormat === 'json' ? (
                 <>
                   <strong>Project JSON:</strong> Saves your entire story structure.
                   Use this to backup your work or share with collaborators.
+                </>
+              ) : exportFormat === 'markdown' ? (
+                <>
+                  <strong>Markdown:</strong> Human-readable script with chapters and dialogue.
+                </>
+              ) : (
+                <>
+                  <strong>Plain outline:</strong> Compact text list of nodes and variables.
                 </>
               )}
             </div>

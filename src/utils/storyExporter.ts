@@ -1,4 +1,4 @@
-import type { Story, ImportedCharacter, MediaAsset } from '../types/story'
+import type { Story, ImportedCharacter, MediaAsset, TiptapJSON } from '../types/story'
 import type { Node, Edge } from 'reactflow'
 import { STORY_PLAYER_CODE, STORY_PLAYER_STYLES } from './storyPlayer'
 import { tiptapToHTML, tiptapToMarkdown, tiptapToPlainText } from './tiptapConverter'
@@ -157,6 +157,39 @@ export function exportToJSON(options: EnhancedExportOptions): string {
   }
   
   return JSON.stringify(exportData, null, 2)
+}
+
+/** Readable plain-text outline for writers / version control */
+export function exportToPlainTextOutline(options: EnhancedExportOptions): string {
+  const { story, nodes, edges, variables } = options
+  const lines: string[] = []
+  lines.push(story.name)
+  lines.push('='.repeat(Math.min(60, story.name.length || 1)))
+  if (story.description) {
+    lines.push('', story.description, '')
+  }
+  if (Object.keys(variables || {}).length > 0) {
+    lines.push('Variables:', JSON.stringify(variables, null, 2), '')
+  }
+  lines.push(`Nodes: ${nodes.length}  Connections: ${edges.length}`, '')
+  for (const node of nodes) {
+    const label = (node.data as { label?: string }).label || node.id
+    lines.push(`--- ${node.type || 'node'}: ${label} (${node.id})`)
+    const d = node.data as {
+      richText?: unknown
+      text?: string
+      prompt?: string
+      condition?: string
+      notes?: string
+    }
+    if (d.richText) lines.push(tiptapToPlainText(d.richText as TiptapJSON))
+    else if (d.text) lines.push(d.text)
+    else if (d.prompt) lines.push(d.prompt)
+    if (d.condition) lines.push(`Condition: ${d.condition}`)
+    if (d.notes) lines.push(`Notes: ${d.notes}`)
+    lines.push('')
+  }
+  return lines.join('\n')
 }
 
 export function exportToMarkdown(options: EnhancedExportOptions): string {

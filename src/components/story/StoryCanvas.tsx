@@ -212,7 +212,12 @@ export default function StoryCanvas() {
   return (
     <div
       ref={reactFlowWrapper}
-      style={{ width: '100%', height: '100%', position: 'relative' }}
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        touchAction: 'none',
+      }}
       onKeyDown={onKeyDown}
       tabIndex={0}
     >

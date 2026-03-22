@@ -4,7 +4,7 @@ Run through after meaningful changes (routing, stores, canvas, or exports).
 
 ## Global
 
-- [ ] `npm run lint`, `npm run test`, `npm run build` succeed  
+- [ ] `npm run lint`, `npm run test`, `npm run build`, and `npm run test:e2e` succeed (after `npm run build` for e2e)  
 - [ ] Toasts appear for save/load failures (no raw `alert` for those paths)  
 - [ ] Error boundary: trigger a render error in dev tools → studio fallback offers dashboard link  
 
@@ -26,10 +26,13 @@ Run through after meaningful changes (routing, stores, canvas, or exports).
 
 ## Character
 
-- [ ] Template load, save, export PNG / JSON, toast on export failure  
+- [ ] Template load, save, export PNG / JSON / GIF (Edit mode), toast on export failure  
+- [ ] Test Live switches to playback mode  
 
 ## Story (branching narrative, infinite canvas)
 
+- [ ] Export plain outline (.txt) downloads  
+- [ ] Paste image (outside inputs) adds to media library  
 - [ ] New story → URL becomes `/story/:id`  
 - [ ] Pan and zoom across a large empty area; **Fit graph** and **100%** in canvas panel  
 - [ ] `?` opens shortcuts; scroll/pinch zoom within min/max  

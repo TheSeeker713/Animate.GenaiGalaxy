@@ -15,6 +15,14 @@ const TARGET_COMPRESSION_SIZE = 500 * 1024  // 500KB per image
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm']
 
+export async function computeBlobSha256(blob: Blob): Promise<string> {
+  const buf = await blob.arrayBuffer()
+  const hash = await crypto.subtle.digest('SHA-256', buf)
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
+}
+
 /**
  * Upload and process a media file
  */
@@ -48,7 +56,8 @@ export async function uploadMedia(file: File): Promise<MediaAsset> {
   
   // Create blob URL for storage
   const url = URL.createObjectURL(processedBlob)
-  
+  const contentHash = await computeBlobSha256(processedBlob)
+
   return {
     id: nanoid(),
     type: isImage ? 'image' : 'video',
@@ -57,6 +66,7 @@ export async function uploadMedia(file: File): Promise<MediaAsset> {
     filename: file.name,
     size: processedBlob.size,
     uploadedAt: new Date().toISOString(),
+    contentHash,
   }
 }
 

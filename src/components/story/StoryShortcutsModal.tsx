@@ -32,6 +32,10 @@ export default function StoryShortcutsModal({ open, onClose }: Props) {
             <strong className="text-slate-200">Canvas:</strong> drag background to pan, scroll or
             pinch to zoom. The graph is unbounded (infinite canvas).
           </li>
+          <li>
+            <strong className="text-slate-200">Import:</strong> paste an image (e.g. screenshot from
+            Raster/Vector) when not typing in a field — it is added to the media library.
+          </li>
         </ul>
         <button
           type="button"

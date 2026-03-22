@@ -118,6 +118,9 @@ export default function CharacterStudio() {
   
   const handleTestLive = () => {
     setSelectedTool('test')
+    if (!isPlaybackMode) {
+      togglePlaybackMode()
+    }
   }
   
   if (!currentCharacter && !showTemplateGallery) {
@@ -542,6 +545,7 @@ export default function CharacterStudio() {
         <ExportModal
           character={currentCharacter}
           stageRef={canvasStageRef}
+          isPlaybackMode={isPlaybackMode}
           onClose={() => setShowExportModal(false)}
         />
       )}

@@ -1,8 +1,13 @@
 import { useRef, useEffect, useState } from 'react'
-import { Stage, Layer, Rect, Ellipse, Line, Star, RegularPolygon, Text } from 'react-konva'
+import { Stage, Layer, Rect, Ellipse, Line, Star, RegularPolygon, Text, Circle, Group } from 'react-konva'
 import { useVectorStore } from '../../store/vectorStore'
 import type { VectorPath, BezierPoint } from '../../types/vector'
 import Konva from 'konva'
+import {
+  flattenPathToKonvaBezier,
+  pathHasBezierHandles,
+  polylineToBezierPoints,
+} from '../../utils/vectorBezier'
 
 export default function VectorCanvas() {
   const stageRef = useRef<Konva.Stage>(null)
@@ -147,7 +152,8 @@ export default function VectorCanvas() {
       const maxY = Math.max(...ys)
       if (maxX - minX < 2 && maxY - minY < 2) return
 
-      const rel: BezierPoint[] = pts.map((p) => ({ x: p.x - minX, y: p.y - minY }))
+      const relPlain = pts.map((p) => ({ x: p.x - minX, y: p.y - minY }))
+      const rel: BezierPoint[] = polylineToBezierPoints(relPlain, false)
       const newPath: VectorPath = {
         id: crypto.randomUUID(),
         type: 'path',
@@ -429,6 +435,106 @@ export default function VectorCanvas() {
     }
   }
 
+  const renderPathEditHandles = () => {
+    if (currentTool !== 'select') return null
+    return paths.map((path) => {
+      if (path.type !== 'path' || !selectedPathIds.includes(path.id)) return null
+      if (!path.points.length || !pathHasBezierHandles(path.points)) return null
+      return (
+        <Group key={`bezier-edit-${path.id}`} listening>
+          {path.points.map((pt, idx) => (
+            <Group key={`${path.id}-pt-${idx}`}>
+              {(pt.handleOut?.x != null || pt.handleOut?.y != null) && (
+                <Line
+                  points={[
+                    path.x + pt.x,
+                    path.y + pt.y,
+                    path.x + pt.x + (pt.handleOut?.x ?? 0),
+                    path.y + pt.y + (pt.handleOut?.y ?? 0),
+                  ]}
+                  stroke="#64748B"
+                  strokeWidth={1 / zoom}
+                  listening={false}
+                />
+              )}
+              {(pt.handleIn?.x != null || pt.handleIn?.y != null) && (
+                <Line
+                  points={[
+                    path.x + pt.x,
+                    path.y + pt.y,
+                    path.x + pt.x + (pt.handleIn?.x ?? 0),
+                    path.y + pt.y + (pt.handleIn?.y ?? 0),
+                  ]}
+                  stroke="#64748B"
+                  strokeWidth={1 / zoom}
+                  dash={[4 / zoom, 3 / zoom]}
+                  listening={false}
+                />
+              )}
+              <Circle
+                x={path.x + pt.x}
+                y={path.y + pt.y}
+                radius={Math.max(4, 5 / zoom)}
+                fill="#2563EB"
+                stroke="#E2E8F0"
+                strokeWidth={1 / zoom}
+                draggable
+                onMouseDown={(e) => e.cancelBubble = true}
+                onDragMove={(e) => {
+                  const nx = e.target.x() - path.x
+                  const ny = e.target.y() - path.y
+                  updatePath(currentFrameIndex, currentLayerIndex, path.id, {
+                    points: path.points.map((q, j) =>
+                      j === idx ? { ...q, x: nx, y: ny } : q
+                    ),
+                  })
+                }}
+              />
+              <Circle
+                x={path.x + pt.x + (pt.handleOut?.x ?? 0)}
+                y={path.y + pt.y + (pt.handleOut?.y ?? 0)}
+                radius={Math.max(3, 4 / zoom)}
+                fill="#F59E0B"
+                stroke="#fff"
+                strokeWidth={1 / zoom}
+                draggable
+                onMouseDown={(e) => e.cancelBubble = true}
+                onDragMove={(e) => {
+                  const hx = e.target.x() - path.x - pt.x
+                  const hy = e.target.y() - path.y - pt.y
+                  updatePath(currentFrameIndex, currentLayerIndex, path.id, {
+                    points: path.points.map((q, j) =>
+                      j === idx ? { ...q, handleOut: { x: hx, y: hy } } : q
+                    ),
+                  })
+                }}
+              />
+              <Circle
+                x={path.x + pt.x + (pt.handleIn?.x ?? 0)}
+                y={path.y + pt.y + (pt.handleIn?.y ?? 0)}
+                radius={Math.max(3, 4 / zoom)}
+                fill="#A855F7"
+                stroke="#fff"
+                strokeWidth={1 / zoom}
+                draggable
+                onMouseDown={(e) => e.cancelBubble = true}
+                onDragMove={(e) => {
+                  const hx = e.target.x() - path.x - pt.x
+                  const hy = e.target.y() - path.y - pt.y
+                  updatePath(currentFrameIndex, currentLayerIndex, path.id, {
+                    points: path.points.map((q, j) =>
+                      j === idx ? { ...q, handleIn: { x: hx, y: hy } } : q
+                    ),
+                  })
+                }}
+              />
+            </Group>
+          ))}
+        </Group>
+      )
+    })
+  }
+
   // Render paths
   const renderPaths = () => {
     return paths.map((path) => {
@@ -503,11 +609,16 @@ export default function VectorCanvas() {
         case 'path': {
           const pts = path.points
           if (!pts?.length) return null
+          const bezier = pathHasBezierHandles(pts)
           const flat = pts.flatMap((p) => [path.x + p.x, path.y + p.y])
+          const linePoints = bezier ? flattenPathToKonvaBezier(path) : flat
           return (
             <Line
               key={path.id}
-              points={flat}
+              points={linePoints}
+              bezier={bezier}
+              tension={bezier ? 0 : 0.32}
+              closed={path.closed}
               stroke={path.stroke}
               strokeWidth={path.strokeWidth}
               lineCap="round"
@@ -611,6 +722,8 @@ export default function VectorCanvas() {
 
             {/* Paths */}
             {renderPaths()}
+
+            {renderPathEditHandles()}
 
             {/* Temp shape preview */}
             {renderTempShape()}

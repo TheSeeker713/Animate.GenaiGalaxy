@@ -59,11 +59,11 @@ npm run test
 
 The app uses a **dashboard-first architecture** with project management:
 
-- **Dashboard** (`/`) - Main menu for creating/opening projects
+- **Dashboard** (`/` and `/dashboard`) - Create/open projects from Recent Projects
 - **Raster Studio** (`/raster/:projectId`) - Frame-by-frame animation workspace
-- **Vector Studio** (`/vector/:projectId`) - Coming soon
-- **Character Studio** (`/character/:projectId`) - Coming soon
-- **Story Builder** (`/story/:projectId`) - Coming soon
+- **Vector Studio** (`/vector/:projectId`) - Vector shapes, pen paths, frames/layers
+- **Character Studio** (`/character/:projectId`) - Rig/morph, webcam, PNG / JSON export
+- **Story Builder** (`/story/:projectId`) - Branching narrative graph (React Flow), IndexedDB persistence
 
 Each studio type has its own:
 - Project settings (dimensions, FPS, etc.)
@@ -91,7 +91,7 @@ The Character Studio will integrate webcam face/body puppeteering:
 ## 📦 Tech Stack
 
 - **React 19** - UI framework
-- **Vite 7** - Build tool
+- **Vite 8** - Build tool
 - **TypeScript** - Type safety
 - **Tailwind CSS v4** - Styling
 - **Konva.js** - Canvas rendering
@@ -122,6 +122,8 @@ src/
 | [docs/STORY_BUILDER_PLAN.md](docs/STORY_BUILDER_PLAN.md) | Story Builder design notes |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Deployment |
 | [docs/COPILOT_ROADMAP.md](docs/COPILOT_ROADMAP.md) | AI-assistant context and conventions |
+| [docs/QA_CHECKLIST.md](docs/QA_CHECKLIST.md) | Manual QA after routing, stores, or canvas changes |
+| [docs/DEPENDENCY_UPGRADES.md](docs/DEPENDENCY_UPGRADES.md) | Planned major dependency upgrades (TipTap 3, Vite 8, etc.) |
 
 ## 🎯 Roadmap (by track)
 

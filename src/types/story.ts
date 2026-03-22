@@ -20,6 +20,8 @@ export interface MediaAsset {
   size: number             // Bytes
   uploadedAt: string
   caption?: string
+  /** SHA-256 hex of file bytes for deduplication */
+  contentHash?: string
 }
 
 // Chapter/Act Organization

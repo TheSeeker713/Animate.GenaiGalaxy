@@ -1,17 +1,32 @@
 import { memo } from 'react'
 import { Handle, Position, type NodeProps } from 'reactflow'
 import type { ChoiceNodeData } from '../../../types/story'
+import { getChoiceCardImageUrl } from '../../../utils/storyNodeVisuals'
 
 export default memo(({ data, selected }: NodeProps<ChoiceNodeData>) => {
+  const cardImg = getChoiceCardImageUrl(data)
+
   return (
     <div
-      className={`px-4 py-3 rounded-xl border-2 shadow-lg transition-all ${
+      className={`rounded-xl border-2 shadow-lg transition-all overflow-hidden ${
         selected
           ? 'border-purple-400 shadow-purple-500/50'
           : 'border-purple-600 shadow-purple-900/30'
       } bg-gradient-to-br from-purple-500 to-purple-600`}
       style={{ minWidth: 200 }}
     >
+      {cardImg && (
+        <div className="h-12 w-full bg-slate-900/40 overflow-hidden">
+          <img
+            src={cardImg}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="lazy"
+            draggable={false}
+          />
+        </div>
+      )}
+      <div className="px-4 py-3">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xl">🔀</span>
         <div className="text-white font-bold text-xs">CHOICE</div>
@@ -50,6 +65,7 @@ export default memo(({ data, selected }: NodeProps<ChoiceNodeData>) => {
           style={{ top: `${50 + (index - data.choices.length / 2 + 0.5) * 25}%` }}
         />
       ))}
+      </div>
     </div>
   )
 })

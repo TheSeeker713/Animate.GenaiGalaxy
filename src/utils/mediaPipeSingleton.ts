@@ -42,25 +42,37 @@ class MediaPipeManager {
     this.initializationCount++;
     console.log(`Initializing MediaPipe (attempt ${this.initializationCount})`);
 
+    const modelUrl =
+      'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
+
     try {
       const vision = await FilesetResolver.forVisionTasks(
         'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
       );
 
-      const landmarker = await FaceLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-          delegate: 'GPU',
-        },
-        runningMode: 'VIDEO',
-        numFaces: 1,
-        minFaceDetectionConfidence: 0.5,
-        minFacePresenceConfidence: 0.5,
-        minTrackingConfidence: 0.5,
-      });
+      const tryCreate = (delegate: 'GPU' | 'CPU') =>
+        FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: modelUrl,
+            delegate,
+          },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          minFaceDetectionConfidence: 0.5,
+          minFacePresenceConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
 
-      console.log('MediaPipe initialized successfully');
-      return landmarker;
+      try {
+        const landmarker = await tryCreate('GPU');
+        console.log('MediaPipe initialized (GPU)');
+        return landmarker;
+      } catch (gpuErr) {
+        console.warn('MediaPipe GPU init failed, retrying CPU:', gpuErr);
+        const landmarker = await tryCreate('CPU');
+        console.log('MediaPipe initialized (CPU fallback)');
+        return landmarker;
+      }
     } catch (error) {
       this.initPromise = null;
       console.error('Failed to initialize MediaPipe:', error);
